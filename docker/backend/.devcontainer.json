@@ -1,0 +1,19 @@
+{
+  "name": "python-container",
+  "dockerComposeFile": ["../../docker-compose.yaml"],
+  "service": "python",
+  //VSCode上のワークスペースのルートディレクトリ
+  "workspaceFolder": "/app",
+  //VSCodeを閉じたときにコンテナを停止しない設定
+  "shutdownAction": "none",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff"],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "files.autoSave": "onFocusChange"
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+services:
+  frontend:
+    # ここは使う技術によって適宜変更すること
+    container_name: react
+    # docker image を作成するときの指示をするファイル(Dockerfile)の場所を指定
+    build:
+      context: .
+      dockerfile: ./docker/frontend/Dockerfile
+    # こうしておくことで後で3000ポートからアクセスすることが可能になる。
+    ports:
+      - 3000:3000
+    # docker 内のディレクトリと同期させるディレクトリを指定。
+    # ディレクトリが存在しない場合は勝手に作成される。
+    volumes:
+      - ./app/frontend:/app
+    # tty: true とすることによりコンテナを継続させる。
+    tty: true
+
+  backend:
+    # ここは使う技術によって適宜変更すること
+    container_name: python
+    build:
+      context: .
+      dockerfile: ./docker/backend/Dockerfile
+    ports:
+      - 5000:5000
+    volumes:
+      - ./app/backend/:/app
+    tty: true
