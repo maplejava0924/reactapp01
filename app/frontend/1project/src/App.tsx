@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import doraemonIcon from "./assets/doraemon.png";
+import axios from "axios";
 
 const App = () => {
   const [messages, setMessages] = useState<{ sender: string; text: string }[]>(
@@ -15,7 +16,7 @@ const App = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages, isThinking]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim()) return;
 
     // ユーザーメッセージを追加
@@ -26,25 +27,26 @@ const App = () => {
     // エージェントが考えている状態をセット
     setIsThinking(true);
 
-    // 仮のエージェントの応答（2.5秒後に返答）
-    setTimeout(() => {
+    // エージェントの応答
+    try {
+      const res = await axios.post("http://localhost:5000/chat", {
+        message: input,
+      });
+
+      const agentMessage = { sender: "agent", text: res.data.reply };
+      setMessages((prev) => [...prev, agentMessage]);
+    } catch (error) {
+      console.error("APIエラー:", error);
       setMessages((prev) => [
         ...prev,
         {
           sender: "agent",
-          text: `のび太くん！何をそんなに困った顔してるんだい？また宿題を忘れちゃったとか、ジャイアンにからかわれたとか？まったく、キミは相変わらずだねぇ。でも安心して！ぼくがいる限り、どんなことでも解決してみせるよ！
-
-たとえば、時間が足りなくて宿題が終わらないなら、「どこでもドア」で未来の自分に会いに行って、完成した宿題を見せてもらえばいいんだ。でも、それじゃあ勉強にならないよね。うーん、じゃあ「暗記パン」を使って、教科書の内容をペタペタ写しちゃえば、あっという間に覚えられる！でもこれも、ちゃんと努力しないと身につかないか……。
-
-よし、それなら「努力が楽しくなるクスリ」を使おう！これを飲むと、どんなに面倒くさい勉強や練習でも、ワクワクしながら取り組めるようになるんだ！ほら、これでキミも立派な優等生に……って、あれ？何をそんなに疑わしそうな顔してるんだい？キミはぼくのひみつ道具を使うとき、いつも楽をしようとしてばかりだからなぁ。だから、今回は特別に道具なしでやる方法を教えてあげよう！
-
-大事なのは「今できることを精一杯やること」なんだ。未来のことを心配してばかりいても何も変わらないし、過去の失敗をくよくよ悩んでいても意味がないよ。今ここでできることをしっかり積み重ねていけば、いつかきっと大きな力になる。ほら、のび太くんだって、射撃は誰にも負けないくらい上手だし、昼寝の才能なら世界一だし、優しい心だって持ってる。自分の良いところを伸ばしていけば、何だってできるんだよ！
-
-……え？やっぱり道具を貸してほしい？もう、しょうがないなぁ。じゃあ今回は特別に「やる気スイッチ」を押してあげるよ！ポチッ！これでキミも頑張れるはず！さぁ、のび太くん、今日も一緒にがんばろう！`,
+          text: "サーバーと通信できませんでした。もう一度試してください。",
         },
       ]);
+    } finally {
       setIsThinking(false);
-    }, 5500);
+    }
   };
 
   useEffect(() => {
