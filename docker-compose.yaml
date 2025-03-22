@@ -27,3 +27,5 @@ services:
     volumes:
       - ./app/backend/:/app
     tty: true
+    env_file:
+      - .env

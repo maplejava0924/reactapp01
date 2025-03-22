@@ -1,7 +1,7 @@
 {
   "name": "python-container",
   "dockerComposeFile": ["../../docker-compose.yaml"],
-  "service": "python",
+  "service": "backend",
   //VSCode上のワークスペースのルートディレクトリ
   "workspaceFolder": "/app",
   //VSCodeを閉じたときにコンテナを停止しない設定
