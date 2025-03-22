@@ -88,14 +88,14 @@ const App = () => {
                 />
                 <div>
                   <p className="text-xs text-gray-600">ドラえもん</p>
-                  <div className="bg-pink-100 text-black p-2 rounded-lg max-w-md whitespace-pre-wrap">
+                  <div className="bg-pink-100 text-black p-2 rounded-lg max-w-md whitespace-pre-wrap break-words">
                     {msg.text}
                   </div>
                 </div>
               </div>
             )}
             {msg.sender === "user" && (
-              <div className="bg-blue-900 text-white p-2 rounded-lg max-w-xs whitespace-pre-wrap">
+              <div className="bg-blue-900 text-white p-2 rounded-lg max-w-xs whitespace-pre-wrap break-words">
                 {msg.text}
               </div>
             )}
