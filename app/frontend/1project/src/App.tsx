@@ -9,6 +9,24 @@ const App = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
+  // 発言者によって吹き出し色を切り替え
+  const getBubbleStyle = (sender: string) => {
+    switch (sender) {
+      case "司会":
+        return "bg-blue-100 text-blue-900";
+      case "要約エージェント":
+        return "bg-yellow-100 text-yellow-900";
+      case "A子":
+        return "bg-pink-100 text-pink-900";
+      case "B太":
+        return "bg-green-100 text-green-900";
+      case "C助":
+        return "bg-purple-100 text-purple-900";
+      default:
+        return "bg-gray-100 text-gray-900";
+    }
+  };
+
   // メッセージが追加されたら最下部へスクロール
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "auto" });
@@ -58,23 +76,29 @@ const App = () => {
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={`flex items-end mb-2 ${
+            className={`flex items-end mb-4 ${
               msg.sender === "user" ? "justify-end" : "justify-start"
             }`}
           >
-            {/* 全員共通の表示（ユーザー以外） */}
             {msg.sender !== "user" && (
-              <div className="flex items-start">
-                <img
-                  src={doraemonIcon}
-                  alt="Agent"
-                  className="w-10 h-10 rounded-full mr-2"
-                />
-                <div>
-                  <p className="text-xs text-gray-600">{msg.sender}</p>
-                  <div className="bg-pink-100 text-black p-2 rounded-lg max-w-md whitespace-pre-wrap break-words">
-                    {msg.text}
-                  </div>
+              <div className="flex items-center">
+                <div className="flex flex-col items-center mr-2 w-14">
+                  <img
+                    src={doraemonIcon}
+                    alt={msg.sender}
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <p className="text-xs font-bold text-gray-700 mt-1 text-center">
+                    {msg.sender}
+                  </p>
+                </div>
+
+                <div
+                  className={`p-3 rounded-xl max-w-md whitespace-pre-wrap break-words shadow ${getBubbleStyle(
+                    msg.sender
+                  )}`}
+                >
+                  {msg.text}
                 </div>
               </div>
             )}
