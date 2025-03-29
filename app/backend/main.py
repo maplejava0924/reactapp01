@@ -6,6 +6,7 @@ import operator
 import random
 import asyncio
 import logging
+import json
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -60,6 +61,7 @@ MAX_SPEAK_COUNT = 6
 # --- 状態定義 ---
 class AppState(TypedDict):
     thema: str  # 会話のテーマ（司会やエージェントが発言する際に使用）
+    last_speaker: str  # 直前の発言者
     last_comment: str  # 直前の発言内容（要約エージェントがこれを要約する）
     summary: Annotated[
         List[str], operator.add
@@ -76,6 +78,7 @@ def moderator(state: AppState):
     model = ChatOpenAI(model="gpt-4o-mini")
     thema = state["thema"]
     speak_count = state["speak_count"]
+    last_speaker = "司会"
 
     # 初回の導入
     if speak_count == 0:
@@ -90,10 +93,10 @@ def moderator(state: AppState):
         response = model.invoke(
             [SystemMessage(content=system_message), HumanMessage(content=human_message)]
         )
-        content = f"司会: {response.content}"
-        logging.info(content)
+        logging.info(f"{last_speaker}: {response.content}")
         return {
-            "last_comment": content,
+            "last_speaker": last_speaker,
+            "last_comment": response.content,
             "speak_count": speak_count + 1,
             "summary_done": False,
         }
@@ -115,9 +118,12 @@ def moderator(state: AppState):
         response = model.invoke(
             [SystemMessage(content=system_message), HumanMessage(content=human_message)]
         )
-        content = f"司会: {response.content}"
-        logging.info(content)
-        return {"last_comment": content, "next_speaker": "no_one"}
+        logging.info(f"{last_speaker}: {response.content}")
+        return {
+            "last_speaker": last_speaker,
+            "last_comment": response.content,
+            "next_speaker": "no_one",
+        }
 
     # 次の発言者を決める
     next_speaker = random.choice(CHARACTER_NAMES)
@@ -130,10 +136,13 @@ def moderator(state: AppState):
     response = model.invoke(
         [SystemMessage(content=system_message), HumanMessage(content=human_message)]
     )
-    content = f"司会: {response.content}"
-    logging.info(content)
+    logging.info(f"{last_speaker}: {response.content}")
 
-    return {"last_comment": content, "next_speaker": next_speaker}
+    return {
+        "last_speaker": last_speaker,
+        "last_comment": response.content,
+        "next_speaker": next_speaker,
+    }
 
 
 # --- 発言エージェント ---
@@ -158,11 +167,11 @@ def speaker_agent(state: AppState):
 
     model = ChatOpenAI(model="gpt-4o-mini")
     response = model.invoke([SystemMessage(content=system_message)])
-    content = f"{speaker}の意見: {response.content}"
-    logging.info(content)
+    logging.info(f"{speaker}の意見: {response.content}")
 
     return {
-        "last_comment": content,
+        "last_speaker": speaker,
+        "last_comment": response.content,
         "speak_count": speak_count + 1,
         "summary_done": False,
     }
@@ -170,6 +179,7 @@ def speaker_agent(state: AppState):
 
 # --- 要約エージェント ---
 def summarizer_agent(state: AppState):
+    last_speaker = "要約エージェント"
     model = ChatOpenAI(model="gpt-4o-mini")
     last_comment = state.get("last_comment")
     thema = state.get("thema")
@@ -178,7 +188,6 @@ def summarizer_agent(state: AppState):
     human_message = f"""
 以下は「{thema}」というテーマについての直近の発言です。
 この発言を自然な形で一文で要約してください。誰が発言したのかも要約に含めてください。
-要約文の前には「要約:」をつけてください。
 
 # 発言
 {last_comment}
@@ -186,9 +195,12 @@ def summarizer_agent(state: AppState):
     response = model.invoke(
         [SystemMessage(content=system_message), HumanMessage(content=human_message)]
     )
-    summary = response.content
-    logging.info(summary)
-    return {"summary": [summary], "summary_done": True}
+    logging.info(response.content)
+    return {
+        "last_speaker": last_speaker,
+        "summary": [response.content],
+        "summary_done": True,
+    }
 
 
 # --- フロー分岐 ---
@@ -242,6 +254,7 @@ async def chat_stream(request: Request):
             "next_speaker": "",
             "summary_done": False,
             "last_comment": "",
+            "last_speaker": "",
         }
 
         async for event in flow.astream(state):
@@ -255,13 +268,19 @@ async def chat_stream(request: Request):
 
             message = value.get("last_comment")
             summary = value.get("summary")
+            speaker = value.get("last_speaker")
 
             if message:
-                yield f"data: {message}\n\n"
+                payload = {
+                    "last_speaker": speaker,  # Noneのときに備えて
+                    "text": message,
+                }
+                yield f"data: {json.dumps(payload)}\n\n"
 
             if summary:
                 for line in summary:
-                    yield f"data: {line}\n\n"
+                    payload = {"last_speaker": "要約エージェント", "text": line}
+                    yield f"data: {json.dumps(payload)}\n\n"
 
             await asyncio.sleep(0.3)  # 一気にメッセージが出ないようにちょっと待つ
 

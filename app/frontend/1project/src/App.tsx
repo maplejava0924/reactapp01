@@ -20,8 +20,11 @@ const App = () => {
 
     // 通常のメッセージ受信
     eventSource.onmessage = (e) => {
-      const agentMessage = { sender: "agent", text: e.data };
-      setMessages((prev) => [...prev, agentMessage]);
+      const parsed = JSON.parse(e.data);
+      const speaker = parsed.last_speaker;
+      const text = parsed.text;
+
+      setMessages((prev) => [...prev, { sender: speaker, text }]);
     };
 
     // フロー正常終了（イベント名 'end'）
@@ -59,7 +62,8 @@ const App = () => {
               msg.sender === "user" ? "justify-end" : "justify-start"
             }`}
           >
-            {msg.sender === "agent" && (
+            {/* 全員共通の表示（ユーザー以外） */}
+            {msg.sender !== "user" && (
               <div className="flex items-start">
                 <img
                   src={doraemonIcon}
@@ -67,7 +71,7 @@ const App = () => {
                   className="w-10 h-10 rounded-full mr-2"
                 />
                 <div>
-                  <p className="text-xs text-gray-600">エージェント</p>
+                  <p className="text-xs text-gray-600">{msg.sender}</p>
                   <div className="bg-pink-100 text-black p-2 rounded-lg max-w-md whitespace-pre-wrap break-words">
                     {msg.text}
                   </div>
@@ -76,7 +80,6 @@ const App = () => {
             )}
           </div>
         ))}
-
         {/* スクロール位置調整 */}
         <div ref={chatEndRef} />
       </div>
