@@ -179,7 +179,7 @@ def speaker_agent(state: AppState):
 
 # --- 要約エージェント ---
 def summarizer_agent(state: AppState):
-    last_speaker = "要約エージェント"
+    last_speaker = state.get("last_speaker")
     model = ChatOpenAI(model="gpt-4o-mini")
     last_comment = state.get("last_comment")
     thema = state.get("thema")
@@ -191,11 +191,16 @@ def summarizer_agent(state: AppState):
 
 # 発言
 {last_comment}
+
+# 発言者
+{last_speaker}
+
 """
     response = model.invoke(
         [SystemMessage(content=system_message), HumanMessage(content=human_message)]
     )
     logging.info(response.content)
+    last_speaker = "要約エージェント"
     return {
         "last_speaker": last_speaker,
         "summary": [response.content],
