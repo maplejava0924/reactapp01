@@ -1,7 +1,11 @@
-FROM python:3.9.2-buster
+# LangGraph-Supervisorの要件 Python Version >= 3.10
+FROM python:3.10.2-buster
 
 ENV LANG C.UTF-8
 ENV TZ Asia/Tokyo
+
+# pipとセットアップツールのアップグレード：LangGraph-Supervisorのため
+RUN pip install --upgrade pip setuptools wheel
 
 COPY ./docker/backend/requirements.txt requirements.txt
 RUN pip install -r requirements.txt

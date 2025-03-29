@@ -1,73 +1,53 @@
+// App.tsx
 import { useState, useEffect, useRef } from "react";
 import doraemonIcon from "./assets/doraemon.png";
-import axios from "axios";
 
 const App = () => {
   const [messages, setMessages] = useState<{ sender: string; text: string }[]>(
     []
   );
-  const [input, setInput] = useState("");
-  const [isThinking, setIsThinking] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const [thinkingDots, setThinkingDots] = useState(".");
 
   // メッセージが追加されたら最下部へスクロール
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "auto" });
-  }, [messages, isThinking]);
+  }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
+  const startStreaming = () => {
+    setIsStreaming(true);
+    const eventSource = new EventSource("http://127.0.0.1:5000/chat/stream");
 
-    // ユーザーメッセージを追加
-    const userMessage = { sender: "user", text: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-
-    // エージェントが考えている状態をセット
-    setIsThinking(true);
-
-    // エージェントの応答
-    try {
-      const res = await axios.post("http://localhost:5000/chat", {
-        message: input,
-      });
-
-      const agentMessage = { sender: "agent", text: res.data.reply };
+    // 通常のメッセージ受信
+    eventSource.onmessage = (e) => {
+      const agentMessage = { sender: "agent", text: e.data };
       setMessages((prev) => [...prev, agentMessage]);
-    } catch (error) {
-      console.error("APIエラー:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: "agent",
-          text: "エラー：サーバーと通信できませんでした。",
-        },
-      ]);
-    } finally {
-      setIsThinking(false);
-    }
+    };
+
+    // フロー正常終了（イベント名 'end'）
+    eventSource.addEventListener("end", () => {
+      console.log("✅ フロー正常終了");
+      eventSource.close();
+      setIsStreaming(false);
+    });
+
+    // エラー発生時（接続異常）
+    eventSource.onerror = (err) => {
+      console.error("❌ SSE接続エラー:", err);
+      // readyState が 2（CLOSED）かどうかで異常か判断できる
+      if (eventSource.readyState === 2) {
+        console.log("接続がクローズされました");
+      }
+      eventSource.close();
+      setIsStreaming(false);
+    };
   };
-
-  useEffect(() => {
-    if (!isThinking) return;
-
-    const dotStates = [".", "..", "..."];
-    let index = 0;
-
-    const interval = setInterval(() => {
-      index = (index + 1) % dotStates.length;
-      setThinkingDots(dotStates[index]);
-    }, 500); // 0.5秒ごとに切り替え
-
-    return () => clearInterval(interval); // クリーンアップ
-  }, [isThinking]);
 
   return (
     <div className="flex flex-col h-screen bg-green-50">
       {/* ヘッダー */}
       <header className="p-4 bg-green-800 text-white text-xl font-bold text-center">
-        AIチャット
+        AIグループチャット
       </header>
 
       {/* チャット画面 */}
@@ -87,54 +67,28 @@ const App = () => {
                   className="w-10 h-10 rounded-full mr-2"
                 />
                 <div>
-                  <p className="text-xs text-gray-600">ドラえもん</p>
+                  <p className="text-xs text-gray-600">エージェント</p>
                   <div className="bg-pink-100 text-black p-2 rounded-lg max-w-md whitespace-pre-wrap break-words">
                     {msg.text}
                   </div>
                 </div>
               </div>
             )}
-            {msg.sender === "user" && (
-              <div className="bg-blue-900 text-white p-2 rounded-lg max-w-xs whitespace-pre-wrap break-words">
-                {msg.text}
-              </div>
-            )}
           </div>
         ))}
-
-        {/* 「ドラえもんが入力しています」表示 */}
-        {isThinking && (
-          <div className="flex items-center justify-start mt-2">
-            <img
-              src={doraemonIcon}
-              alt="Agent"
-              className="w-10 h-10 rounded-full mr-2"
-            />
-            <p className="text-gray-500 text-sm">
-              ドラえもんが入力しています{thinkingDots}
-            </p>
-          </div>
-        )}
 
         {/* スクロール位置調整 */}
         <div ref={chatEndRef} />
       </div>
 
-      {/* 入力フォーム */}
-      <div className="p-4 bg-white flex">
-        <input
-          type="text"
-          className="input input-bordered flex-1 mr-2"
-          placeholder="メッセージを入力..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-        />
+      {/* 開始ボタン */}
+      <div className="p-4 bg-white flex justify-center">
         <button
           className="btn bg-blue-500 text-white hover:bg-blue-600"
-          onClick={sendMessage}
+          onClick={startStreaming}
+          disabled={isStreaming}
         >
-          送信
+          {isStreaming ? "チャット進行中..." : "チャット開始"}
         </button>
       </div>
     </div>
