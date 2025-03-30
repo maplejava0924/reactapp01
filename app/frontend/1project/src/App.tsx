@@ -8,7 +8,9 @@ const App = () => {
   );
   const [isStreaming, setIsStreaming] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const [userMessage, setUserMessage] = useState(""); // 入力値の状態
+  const [userMessage, setUserMessage] = useState(""); // 送信フォームの入力値
+  const [thinkingAgent, setThinkingAgent] = useState<string | null>(null); //考え中のエージェント名
+  const [thinkingDots, setThinkingDots] = useState(""); //「○○が入力しています…」の「.」→「..」→「...」のアニメーション用
 
   // 発言者によって吹き出し色を切り替え
   const getBubbleStyle = (sender: string) => {
@@ -60,6 +62,7 @@ const App = () => {
       const speaker = parsed.last_speaker;
       const text = parsed.text;
 
+      setThinkingAgent(speaker); // エージェント名をセット
       setMessages((prev) => [...prev, { sender: speaker, text }]);
     };
 
@@ -68,6 +71,7 @@ const App = () => {
       console.log("✅ フロー正常終了");
       eventSource.close();
       setIsStreaming(false);
+      setThinkingAgent(null);
     });
 
     // エラー発生時（接続異常）
@@ -79,8 +83,23 @@ const App = () => {
       }
       eventSource.close();
       setIsStreaming(false);
+      setThinkingAgent(null);
     };
   };
+
+  useEffect(() => {
+    if (!isStreaming) return;
+
+    const dotStates = [".", "..", "..."];
+    let index = 0;
+
+    const interval = setInterval(() => {
+      index = (index + 1) % dotStates.length;
+      setThinkingDots(dotStates[index]);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isStreaming]);
 
   return (
     <div className="flex flex-col h-screen bg-green-50">
@@ -125,11 +144,24 @@ const App = () => {
             )}
           </div>
         ))}
+
+        {isStreaming && thinkingAgent && (
+          <div className="flex items-center mt-2 text-gray-500 text-sm">
+            <img
+              src={doraemonIcon}
+              alt="Agent"
+              className="w-8 h-8 rounded-full mr-2"
+            />
+            <p>
+              {thinkingAgent}が入力しています{thinkingDots}
+            </p>
+          </div>
+        )}
+
         {/* スクロール位置調整 */}
         <div ref={chatEndRef} />
       </div>
 
-      {/* 入力フォーム */}
       {/* 入力フォーム */}
       <div className="p-4 bg-white flex">
         <input
