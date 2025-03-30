@@ -7,6 +7,7 @@ import random
 import asyncio
 import logging
 import json
+import re
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -32,24 +33,24 @@ app.add_middleware(
 CHARACTER_PROFILES = {
     "A子": {
         "性別": "女性",
-        "年齢": "30代",
+        "年齢": "20代",
         "職業": "会社員",
         "趣味": "音楽鑑賞",
-        "性格": "落ち着いた性格で、じっくり物事を考えて発言します。",
+        "性格": "落ち着いた性格で、じっくり物事を考えて発言します。B太と喧嘩中です。B太の発言には厳しくあたります。",
     },
     "B太": {
         "性別": "男性",
         "年齢": "20代",
         "職業": "大学生",
         "趣味": "テレビゲーム",
-        "性格": "明るく、前向きな性格です。",
+        "性格": "明るく、前向きな性格です。A子と喧嘩中です。B太はA子に怒られるとうんざりした様子になります。",
     },
     "C助": {
         "性別": "男性",
         "年齢": "40代",
         "職業": "会社役員",
         "趣味": "ゴルフ",
-        "性格": "温厚で、話しやすい雰囲気を持っています。",
+        "性格": "温厚で、話しやすい雰囲気を持っています。A子とB太が喧嘩中であることは知っていますが、蚊帳の外という感じです。「若い人は元気だなぁ」と楽観的な反応をします。",
     },
 }
 CHARACTER_NAMES = list(CHARACTER_PROFILES.keys())
@@ -114,7 +115,7 @@ def moderator(state: AppState):
         system_message = "あなたは会議の司会者で、議論のまとめが得意です。"
         human_message = f"""
 以下は「{thema}」というテーマについて参加者が出した要約コメントです。
-これらをもとに、誰がどのような魅力的なゲームの話をしていたかを振り返ってください。
+これらをもとに、誰がどのような魅力的な話をしていたかを振り返ってください。
 そして最後に会話を締めくくるような自然な司会コメントを一文で出力してください。
 
 # 要約リスト
@@ -131,21 +132,48 @@ def moderator(state: AppState):
         }
 
     # 次の発言者を決める
-    next_speaker = random.choice(CHARACTER_NAMES)
-    system_message = "あなたは会話の司会進行役です。"
+    last_comment = state.get("last_comment")
+    summary_lines = state.get("summary", "まだなし")
+    summary_text = "\n".join(summary_lines)
+
+    system_message = "あなたは会話の司会進行役です。以下の会話の流れを見て、次に発言すべき人を1人選び、司会としてコメントしてください。"
+
     human_message = f"""
-以下のテーマについて、すでに何人かが意見を話しました。
-次に「{next_speaker}」さんに発言を促す自然な司会の一言を出力してください。
 テーマ: {thema}
+
+直前のコメント：
+{last_comment}
+
+今までの会話要約：
+{summary_text}
+
+以下のフォーマットで出力してください：
+
+#次の話者：{{話者名}}
+#コメント：{{自然な司会コメント}}
+
+※ まだ発言していない人を優先してください。発言者名は以下から選んでください：
+{", ".join(CHARACTER_NAMES)}
 """
+
     response = model.invoke(
         [SystemMessage(content=system_message), HumanMessage(content=human_message)]
     )
     logging.info(f"{last_speaker}: {response.content}")
 
+    response_text = response.content
+
+    match_speaker = re.search(r"#次の話者：(.+)", response_text)
+    match_comment = re.search(r"#コメント：(.+)", response_text)
+
+    next_speaker = match_speaker.group(1).strip() if match_speaker else "未定"
+    last_comment = (
+        match_comment.group(1).strip() if match_comment else response_text
+    )  # fallback
+
     return {
         "last_speaker": last_speaker,
-        "last_comment": response.content,
+        "last_comment": last_comment,
         "next_speaker": next_speaker,
     }
 
@@ -155,6 +183,9 @@ def speaker_agent(state: AppState):
     speaker = state.get("next_speaker")
     thema = state.get("thema", "")
     speak_count = state.get("speak_count", 0)
+    summary_lines = state.get("summary", [])
+    summary_text = "\n".join(summary_lines)
+    last_comment = state.get("last_comment")
 
     profile = CHARACTER_PROFILES.get(speaker, {})
     system_message = f"""あなたは以下のようなキャラクターになりきってください。
@@ -166,8 +197,12 @@ def speaker_agent(state: AppState):
 趣味: {profile.get("趣味")}
 性格: {profile.get("性格")}
 ---
-そのキャラクターとして、「{thema}」というテーマについて自分の意見を述べてください。
-話し言葉で、自然に1〜2文程度で簡潔に述べてください。
+そのキャラクターとして、「{thema}」というテーマについて会話履歴を参考に議論の流れを汲んで、直前のコメントに触れつつ、話し言葉で自分の意見を述べてください。
+ほかの人に賛同するだけではなく、自分としての意見を述べるようにしてください。
+
+直前のコメント：{last_comment}
+会話履歴：{summary_text}
+
 """
 
     model = ChatOpenAI(model="gpt-4o-mini")
@@ -260,7 +295,7 @@ async def chat_stream(request: Request):
     async def event_generator():
         # Stateの初期値の決定
         state = {
-            "thema": "最近おすすめのゲーム",
+            "thema": "最近おすすめの映画",
             "user_message": user_message,
             "summary": [],
             "speak_count": 0,
