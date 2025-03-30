@@ -147,11 +147,6 @@ const App = () => {
 
         {isStreaming && thinkingAgent && (
           <div className="flex items-center mt-2 text-gray-500 text-sm">
-            <img
-              src={doraemonIcon}
-              alt="Agent"
-              className="w-8 h-8 rounded-full mr-2"
-            />
             <p>
               {thinkingAgent}が入力しています{thinkingDots}
             </p>
