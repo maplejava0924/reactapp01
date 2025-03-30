@@ -61,6 +61,7 @@ MAX_SPEAK_COUNT = 6
 # --- 状態定義 ---
 class AppState(TypedDict):
     thema: str  # 会話のテーマ（司会やエージェントが発言する際に使用）
+    user_message: str  # ユーザが送信フォームで入力した内容。クエリパラメータで受け取り、司会LLMに読み込ませる。
     last_speaker: str  # 直前の発言者
     last_comment: str  # 直前の発言内容（要約エージェントがこれを要約する）
     summary: Annotated[
@@ -77,6 +78,7 @@ class AppState(TypedDict):
 def moderator(state: AppState):
     model = ChatOpenAI(model="gpt-4o-mini")
     thema = state["thema"]
+    user_message = state.get("user_message", "")
     speak_count = state["speak_count"]
     last_speaker = "司会"
 
@@ -89,6 +91,9 @@ def moderator(state: AppState):
 
 # テーマ
 {thema}
+
+# ユーザからの補足メッセージ
+{user_message if user_message else "特になし"}
 """
         response = model.invoke(
             [SystemMessage(content=system_message), HumanMessage(content=human_message)]
@@ -250,10 +255,13 @@ flow = graph.compile()
 
 @app.get("/chat/stream")
 async def chat_stream(request: Request):
+    user_message = request.query_params.get("user_message", "")
+
     async def event_generator():
         # Stateの初期値の決定
         state = {
             "thema": "最近おすすめのゲーム",
+            "user_message": user_message,
             "summary": [],
             "speak_count": 0,
             "next_speaker": "",

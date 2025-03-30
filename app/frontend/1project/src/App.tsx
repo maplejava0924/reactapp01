@@ -8,6 +8,7 @@ const App = () => {
   );
   const [isStreaming, setIsStreaming] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const [userMessage, setUserMessage] = useState(""); // 入力値の状態
 
   // 発言者によって吹き出し色を切り替え
   const getBubbleStyle = (sender: string) => {
@@ -32,9 +33,26 @@ const App = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages]);
 
+  const handleUserMessage = () => {
+    if (!userMessage.trim()) return;
+
+    // チャット画面にユーザーメッセージを先に表示
+    setMessages((prev) => [...prev, { sender: "user", text: userMessage }]);
+
+    // ストリーミング開始
+    startStreaming();
+
+    // 入力クリア
+    setUserMessage("");
+  };
+
   const startStreaming = () => {
     setIsStreaming(true);
-    const eventSource = new EventSource("http://127.0.0.1:5000/chat/stream");
+    const eventSource = new EventSource(
+      `http://127.0.0.1:5000/chat/stream?user_message=${encodeURIComponent(
+        userMessage
+      )}`
+    );
 
     // 通常のメッセージ受信
     eventSource.onmessage = (e) => {
@@ -80,7 +98,7 @@ const App = () => {
               msg.sender === "user" ? "justify-end" : "justify-start"
             }`}
           >
-            {msg.sender !== "user" && (
+            {msg.sender !== "user" ? (
               <div className="flex items-center">
                 <div className="flex flex-col items-center mr-2 w-14">
                   <img
@@ -92,7 +110,6 @@ const App = () => {
                     {msg.sender}
                   </p>
                 </div>
-
                 <div
                   className={`p-3 rounded-xl max-w-md whitespace-pre-wrap break-words shadow ${getBubbleStyle(
                     msg.sender
@@ -101,6 +118,10 @@ const App = () => {
                   {msg.text}
                 </div>
               </div>
+            ) : (
+              <div className="bg-blue-900 text-white p-2 rounded-lg max-w-xs whitespace-pre-wrap break-words">
+                {msg.text}
+              </div>
             )}
           </div>
         ))}
@@ -108,14 +129,28 @@ const App = () => {
         <div ref={chatEndRef} />
       </div>
 
-      {/* 開始ボタン */}
-      <div className="p-4 bg-white flex justify-center">
+      {/* 入力フォーム */}
+      {/* 入力フォーム */}
+      <div className="p-4 bg-white flex">
+        <input
+          type="text"
+          className="input input-bordered flex-1 mr-2 disabled:bg-gray-200"
+          placeholder="メッセージを入力..."
+          value={userMessage}
+          onChange={(e) => setUserMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !isStreaming) {
+              handleUserMessage();
+            }
+          }}
+          disabled={isStreaming}
+        />
         <button
-          className="btn bg-blue-500 text-white hover:bg-blue-600"
-          onClick={startStreaming}
+          className="btn text-white disabled:bg-gray-400 bg-blue-500 hover:bg-blue-600"
+          onClick={handleUserMessage}
           disabled={isStreaming}
         >
-          {isStreaming ? "チャット進行中..." : "チャット開始"}
+          送信
         </button>
       </div>
     </div>
