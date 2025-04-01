@@ -3,7 +3,6 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated, List, TypedDict
 import operator
-import random
 import asyncio
 import logging
 import json
@@ -70,9 +69,8 @@ class AppState(TypedDict):
     ]  # 要約された発言のリスト（司会が最後のまとめに使う）
     speak_count: int  # 全体の発言数（MAX_SPEAK_COUNT で上限をチェック）
     next_speaker: str  # 次に話すキャラクターの名前（司会が決める）
-    summary_done: (
-        bool  # 直前の発言が要約済みかどうか（Trueなら次は発言、Falseなら要約）
-    )
+    summary_done: bool  # 直前の発言が要約済みかどうか（Trueなら要約済、Falseなら要約未） LangGraphのグラフ遷移判定に使用
+    is_summary: bool  # このメッセージが要約文であるか否か　フロントエンドのホワイトボードへの記載要否を制御
 
 
 # --- 司会（フロー制御） ---
@@ -105,6 +103,7 @@ def moderator(state: AppState):
             "last_comment": response.content,
             "speak_count": speak_count + 1,
             "summary_done": False,
+            "is_summary": False,
         }
 
     # 会話まとめ
@@ -129,6 +128,7 @@ def moderator(state: AppState):
             "last_speaker": last_speaker,
             "last_comment": response.content,
             "next_speaker": "no_one",
+            "is_summary": False,
         }
 
     # 次の発言者を決める
@@ -175,6 +175,7 @@ def moderator(state: AppState):
         "last_speaker": last_speaker,
         "last_comment": last_comment,
         "next_speaker": next_speaker,
+        "is_summary": False,
     }
 
 
@@ -214,6 +215,7 @@ def speaker_agent(state: AppState):
         "last_comment": response.content,
         "speak_count": speak_count + 1,
         "summary_done": False,
+        "is_summary": False,
     }
 
 
@@ -227,7 +229,11 @@ def summarizer_agent(state: AppState):
     system_message = "あなたは発言を自然な日本語で簡潔に要約するアシスタントです。"
     human_message = f"""
 以下は「{thema}」というテーマについての直近の発言です。
-この発言を自然な形で一文で要約してください。誰が発言したのかも要約に含めてください。
+この発言を、要点ごとに文章短く分けて要約してください。出力は1文でお願いします。
+・発言者の名前や「〜と述べた」は不要です。
+・発言の中で重要な事実・意見・主張を3文以内にまとめてください。
+・自然な日本語のまま短く切ってください（1文40文字以内が目安）。
+・敬語は避けてください。
 
 # 発言
 {last_comment}
@@ -240,11 +246,12 @@ def summarizer_agent(state: AppState):
         [SystemMessage(content=system_message), HumanMessage(content=human_message)]
     )
     logging.info(response.content)
-    last_speaker = "要約エージェント"
+
     return {
         "last_speaker": last_speaker,
         "summary": [response.content],
         "summary_done": True,
+        "is_summary": True,
     }
 
 
@@ -303,6 +310,7 @@ async def chat_stream(request: Request):
             "summary_done": False,
             "last_comment": "",
             "last_speaker": "",
+            "is_summary": False,
         }
 
         async for event in flow.astream(state):
@@ -317,17 +325,23 @@ async def chat_stream(request: Request):
             message = value.get("last_comment")
             summary = value.get("summary")
             speaker = value.get("last_speaker")
+            is_summary = value.get("is_summary")
 
             if message:
                 payload = {
                     "last_speaker": speaker,  # Noneのときに備えて
                     "text": message,
+                    "is_summary": is_summary,
                 }
                 yield f"data: {json.dumps(payload)}\n\n"
 
             if summary:
                 for line in summary:
-                    payload = {"last_speaker": "要約エージェント", "text": line}
+                    payload = {
+                        "last_speaker": speaker,
+                        "text": line,
+                        "is_summary": is_summary,
+                    }
                     yield f"data: {json.dumps(payload)}\n\n"
 
             await asyncio.sleep(0.3)  # 一気にメッセージが出ないようにちょっと待つ
