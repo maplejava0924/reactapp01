@@ -23,7 +23,6 @@ const getHeaderStyle = (name: SpeakerName) => {
 const WhiteboardSection = ({ whiteboard }: WhiteboardProps) => {
   return (
     <div className="w-1/3 overflow-auto p-4 bg-white border-l border-gray-300">
-      <h2 className="text-xl font-bold mb-4 text-center">ホワイトボード</h2>
       {Object.entries(whiteboard).map(([name, comments]) => {
         const typedName = name as SpeakerName;
         const isPending = comments.length === 1 && comments[0] === "（未回答）";
