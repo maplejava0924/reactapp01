@@ -10,14 +10,16 @@ import re
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
+from langsmith import Client
 
+# LangChain
+model = ChatOpenAI(model="gpt-4o-mini")
 
+# LangSmith
+client = Client()
+
+# FastAPI
 app = FastAPI()
-
-# Logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
 
 # CORS
 app.add_middleware(
@@ -26,6 +28,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
 # --- キャラ定義・定数 ---
@@ -77,7 +84,6 @@ class AppState(TypedDict):
 
 # --- 司会（フロー制御） ---
 def moderator(state: AppState):
-    model = ChatOpenAI(model="gpt-4o-mini")
     thema = state["thema"]
     user_message = state.get("user_message", "")
     genres = state.get("genres", "")
@@ -85,31 +91,21 @@ def moderator(state: AppState):
     speak_count = state["speak_count"]
     last_speaker = "司会"
 
-    # 初回の導入
+    # 誰も話してないならfirst-templateを実行
     if speak_count == 0:
-        system_message = "あなたは会話の司会進行役です。"
-        human_message = f"""
-以下のテーマでこれから会話を始めます。
-ユーザからのインプットに触れ、議論をどういう方向性にするか検討し、参加者が話しやすくなるような導入コメントを出力してください。
-ここでいう「ユーザ」とは、以下のテーマで議論する様子を見たいと思っている、この議論の聴講者です。
-あなたの役割はユーザからの指示の意図を汲みこれからの議論がユーザの意図に沿うものになるようコントロールすることです。
+        # ChatPromptTemplateに食わせる辞書型のInput
+        inputs = {
+            "thema": thema,
+            "genres": genres if genres else "（指定なし）",
+            "seen_movies": seen_movies if seen_movies else "（特になし）",
+            "user_message": user_message if user_message else "特になし",
+        }
+        # LangSmith Prompt呼び出し
+        prompt = client.pull_prompt("maplejava/moderator-first-template")
+        prompt_value = prompt.invoke(inputs)
 
-# テーマ
-{thema}
+        response = model.invoke(prompt_value)
 
-# ユーザが見たいジャンル
-{genres if genres else "（指定なし）"}
-
-# ユーザが今まで見た映画
-{seen_movies if seen_movies else "（特になし）"}
-
-# ユーザからの補足メッセージ
-{user_message if user_message else "特になし"}
-"""
-        response = model.invoke(
-            [SystemMessage(content=system_message), HumanMessage(content=human_message)]
-        )
-        logging.info(f"{last_speaker}: {response.content}")
         return {
             "last_speaker": last_speaker,
             "last_comment": response.content,
@@ -118,26 +114,21 @@ def moderator(state: AppState):
             "is_summary": False,
         }
 
-    # 会話まとめ
+    # 会話の上限数に達したならsummary-templateを実行
     if speak_count >= MAX_SPEAK_COUNT:
         summary_items = state.get("summary", [])
-        summary_text = "\n".join(
-            [f"{item['speaker']}：{item['text']}" for item in summary_items]
-        )
 
-        system_message = "あなたは会議の司会者で、議論のまとめが得意です。"
-        human_message = f"""
-以下は「{thema}」というテーマについて参加者が出した要約コメントです。
-これらをもとに、誰がどのような魅力的な話をしていたかを振り返ってください。
-そして最後に会話を締めくくるような自然な司会コメントを一文で出力してください。
+        inputs = {
+            "thema": thema,
+            "summary_text": "\n".join(
+                [f"{item['speaker']}：{item['text']}" for item in summary_items]
+            ),
+        }
 
-# 要約リスト
-{summary_text}
-"""
-        response = model.invoke(
-            [SystemMessage(content=system_message), HumanMessage(content=human_message)]
-        )
-        logging.info(f"{last_speaker}: {response.content}")
+        prompt = client.pull_prompt("maplejava/moderator-summary-template")
+        prompt_value = prompt.invoke(inputs)
+        response = model.invoke(prompt_value)
+
         return {
             "last_speaker": last_speaker,
             "last_comment": response.content,
@@ -145,48 +136,31 @@ def moderator(state: AppState):
             "is_summary": False,
         }
 
-    # 次の発言者を決める
+    # 上記いずれでもないならnext-speaker-templateを実行
     last_comment = state.get("last_comment")
     summary_items = state.get("summary", [])
-    summary_text = "\n".join(
-        [f"{item['speaker']}：{item['text']}" for item in summary_items]
-    )
 
-    system_message = "あなたは会話の司会進行役です。以下の会話の流れを見て、直前のコメントに反応するコメントを出しつつ、次に発言すべき人を1人選び、司会としてコメントしてください。"
+    inputs = {
+        "thema": thema,
+        "character_names": ", ".join(CHARACTER_NAMES),
+        "last_comment": last_comment,
+        "summary_text": "\n".join(
+            [f"{item['speaker']}：{item['text']}" for item in summary_items]
+        ),
+    }
+    prompt = client.pull_prompt("maplejava/moderator-next-speaker-template")
+    prompt_value = prompt.invoke(inputs)
 
-    human_message = f"""
-テーマ: {thema}
-議論が特定の話題に偏ってきた場合は、次の話者に対して違った観点での発言を求めるようにしてください。
-※ 必ずまだ発言していない人を優先してください。発言者名は以下から選んでください：
-{", ".join(CHARACTER_NAMES)}
-
-直前のコメント：
-{last_comment}
-
-今までの会話要約：
-{summary_text}
-
-以下のフォーマットで出力してください：
-
-#次の話者：{{話者名}}
-#コメント：{{自然な司会コメント}}
-
-"""
-
-    response = model.invoke(
-        [SystemMessage(content=system_message), HumanMessage(content=human_message)]
-    )
-    logging.info(f"{last_speaker}: {response.content}")
+    response = model.invoke(prompt_value)
 
     response_text = response.content
 
+    # LLMの回答から必要な情報を抽出
     match_speaker = re.search(r"#次の話者：(.+)", response_text)
     match_comment = re.search(r"#コメント：(.+)", response_text)
 
     next_speaker = match_speaker.group(1).strip() if match_speaker else "未定"
-    last_comment = (
-        match_comment.group(1).strip() if match_comment else response_text
-    )  # fallback
+    last_comment = match_comment.group(1).strip() if match_comment else response_text
 
     return {
         "last_speaker": last_speaker,
@@ -199,44 +173,32 @@ def moderator(state: AppState):
 # --- 発言エージェント ---
 def speaker_agent(state: AppState):
     speaker = state.get("next_speaker")
-    thema = state.get("thema", "")
-    speak_count = state.get("speak_count", 0)
     summary_items = state.get("summary", [])
-    summary_text = "\n".join(
-        [f"{item['speaker']}：{item['text']}" for item in summary_items]
-    )
-
-    last_comment = state.get("last_comment")
 
     profile = CHARACTER_PROFILES.get(speaker, {})
-    system_message = f"""あなたは以下のようなキャラクターになりきってください。
----
-名前: {speaker}
-性別: {profile.get("性別")}
-年齢: {profile.get("年齢")}
-職業: {profile.get("職業")}
-趣味: {profile.get("趣味")}
-性格: {profile.get("性格")}
----
-そのキャラクターとして、「{thema}」というテーマについて会話履歴を参考に議論の流れを汲んで、話し言葉で自分の意見を述べてください。
-直前のコメントについては軽く触れてもよいですが、議論が停滞気味になってきたら新しい話題をしてください。
-ほかの人に賛同するだけではなく、自分としての意見を述べるようにしてください。
-自分ばかり発言を求められた場合は、司会を注意してください。
-「C助：」のような誰が話したかの表記は不要です。なりきったキャラクターのセリフのみを出力してください。
+    inputs = {
+        "name": speaker,
+        "gender": profile["性別"],
+        "age": profile["年齢"],
+        "job": profile["職業"],
+        "hobby": profile["趣味"],
+        "personality": profile["性格"],
+        "thema": state.get("thema", ""),
+        "last_comment": state.get("last_comment", ""),
+        "summary_text": "\n".join(
+            [f"{item['speaker']}：{item['text']}" for item in summary_items]
+        ),
+    }
 
-直前のコメント：{last_comment}
-会話履歴：{summary_text}
+    prompt = client.pull_prompt("maplejava/speaker-template")
+    prompt_value = prompt.invoke(inputs)
 
-"""
-
-    model = ChatOpenAI(model="gpt-4o-mini")
-    response = model.invoke([SystemMessage(content=system_message)])
-    logging.info(f"{speaker}の意見: {response.content}")
+    response = model.invoke(prompt_value)
 
     return {
         "last_speaker": speaker,
         "last_comment": response.content,
-        "speak_count": speak_count + 1,
+        "speak_count": state["speak_count"] + 1,
         "summary_done": False,
         "is_summary": False,
     }
@@ -245,30 +207,18 @@ def speaker_agent(state: AppState):
 # --- 要約エージェント ---
 def summarizer_agent(state: AppState):
     last_speaker = state.get("last_speaker")
-    model = ChatOpenAI(model="gpt-4o-mini")
     last_comment = state.get("last_comment")
     thema = state.get("thema")
 
-    system_message = "あなたは発言を自然な日本語で簡潔に要約するアシスタントです。"
-    human_message = f"""
-以下は「{thema}」というテーマについての直近の発言です。
-この発言を、要点ごとに文章短く分けて要約してください。出力は1文でお願いします。
-・発言者の名前や「〜と述べた」は不要です。
-・発言の中で重要な事実・意見・主張を3文以内にまとめてください。
-・自然な日本語のまま短く切ってください（1文40文字以内が目安）。
-・敬語は避けてください。
+    inputs = {
+        "thema": thema,
+        "last_comment": last_comment,
+        "last_speaker": last_speaker,
+    }
+    prompt = client.pull_prompt("maplejava/summarizer-template")
+    prompt_value = prompt.invoke(inputs)
 
-# 発言
-{last_comment}
-
-# 発言者
-{last_speaker}
-
-"""
-    response = model.invoke(
-        [SystemMessage(content=system_message), HumanMessage(content=human_message)]
-    )
-    logging.info(response.content)
+    response = model.invoke(prompt_value)
 
     return {
         "last_speaker": last_speaker,
@@ -297,7 +247,7 @@ graph.add_node("summarizer", summarizer_agent)
 graph.set_entry_point("moderator")
 
 # ▼ 条件分岐の説明付きエッジ設定
-# moderatorが次にどこへ進むかをstateに基づいて判断：
+# moderatorノードにて次にどこへ進むかをstateに基づいて判断：
 # - summary_done が False → summarizer に移動して要約
 # - summary_done が True → speaker に移動して次の発言
 # - next_speaker == no_one → 会話終了
@@ -314,12 +264,13 @@ graph.add_conditional_edges(
 graph.add_edge("speaker", "summarizer")
 graph.add_edge("summarizer", "moderator")
 
-# --- 実行 ---
+# LangGraphのフローをコンパイル（ここではまだ実行しない）
 flow = graph.compile()
 
 
 @app.get("/chat/stream")
 async def chat_stream(request: Request):
+    # フロントエンドから送られてきたデータの取り出し
     user_message = request.query_params.get("user_message", "")
     genres = request.query_params.get("genres", "")
     seen_movies = request.query_params.get("seen_movies", "")
@@ -340,6 +291,8 @@ async def chat_stream(request: Request):
             "seen_movies": seen_movies,
         }
 
+        # フローの実行（LangGraphの状態管理が開始）
+        # 状態が変わるたびにチャット用の内容を yield でフロントへストリーミング送信
         async for event in flow.astream(state):
             if await request.is_disconnected():
                 break
