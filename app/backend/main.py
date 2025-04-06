@@ -67,8 +67,8 @@ class AppState(TypedDict):
     last_speaker: str  # 直前の発言者
     last_comment: str  # 直前の発言内容（要約エージェントがこれを要約する）
     summary: Annotated[
-        List[str], operator.add
-    ]  # 要約された発言のリスト（司会が最後のまとめに使う）
+        List[dict], operator.add
+    ]  # 要約された発言のリスト（司会が最後のまとめに使う）。要約結果に発言者の名前を含むようdict型にする。
     speak_count: int  # 全体の発言数（MAX_SPEAK_COUNT で上限をチェック）
     next_speaker: str  # 次に話すキャラクターの名前（司会が決める）
     summary_done: bool  # 直前の発言が要約済みかどうか（Trueなら要約済、Falseなら要約未） LangGraphのグラフ遷移判定に使用
@@ -120,8 +120,10 @@ def moderator(state: AppState):
 
     # 会話まとめ
     if speak_count >= MAX_SPEAK_COUNT:
-        summary_lines = state.get("summary", [])
-        summary_text = "\n".join(summary_lines)
+        summary_items = state.get("summary", [])
+        summary_text = "\n".join(
+            [f"{item['speaker']}：{item['text']}" for item in summary_items]
+        )
 
         system_message = "あなたは会議の司会者で、議論のまとめが得意です。"
         human_message = f"""
@@ -145,8 +147,10 @@ def moderator(state: AppState):
 
     # 次の発言者を決める
     last_comment = state.get("last_comment")
-    summary_lines = state.get("summary", "まだなし")
-    summary_text = "\n".join(summary_lines)
+    summary_items = state.get("summary", [])
+    summary_text = "\n".join(
+        [f"{item['speaker']}：{item['text']}" for item in summary_items]
+    )
 
     system_message = "あなたは会話の司会進行役です。以下の会話の流れを見て、次に発言すべき人を1人選び、司会としてコメントしてください。"
 
@@ -197,8 +201,11 @@ def speaker_agent(state: AppState):
     speaker = state.get("next_speaker")
     thema = state.get("thema", "")
     speak_count = state.get("speak_count", 0)
-    summary_lines = state.get("summary", [])
-    summary_text = "\n".join(summary_lines)
+    summary_items = state.get("summary", [])
+    summary_text = "\n".join(
+        [f"{item['speaker']}：{item['text']}" for item in summary_items]
+    )
+
     last_comment = state.get("last_comment")
 
     profile = CHARACTER_PROFILES.get(speaker, {})
@@ -264,7 +271,7 @@ def summarizer_agent(state: AppState):
 
     return {
         "last_speaker": last_speaker,
-        "summary": [response.content],
+        "summary": [{"speaker": last_speaker, "text": response.content}],
         "summary_done": True,
         "is_summary": True,
     }
@@ -355,10 +362,10 @@ async def chat_stream(request: Request):
                 yield f"data: {json.dumps(payload)}\n\n"
 
             if summary:
-                for line in summary:
+                for item in summary:
                     payload = {
-                        "last_speaker": speaker,
-                        "text": line,
+                        "last_speaker": item["speaker"],
+                        "text": item["text"],
                         "is_summary": is_summary,
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
