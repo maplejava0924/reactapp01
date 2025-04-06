@@ -5,15 +5,15 @@ import WhiteboardSection from "./WhiteboardSection";
 import FormSection from "./FormSection";
 
 //ホワイトボード用
-type SpeakerName = "司会" | "A子" | "B太" | "C助";
+type SpeakerName = "司会" | "ルフィ" | "ケロロ軍曹" | "ナルト";
 type WhiteboardState = Record<SpeakerName, string[]>;
 
 const App = () => {
   const initialBoardState: WhiteboardState = {
     司会: ["（未回答）"],
-    A子: ["（未回答）"],
-    B太: ["（未回答）"],
-    C助: ["（未回答）"],
+    ルフィ: ["（未回答）"],
+    ケロロ軍曹: ["（未回答）"],
+    ナルト: ["（未回答）"],
   };
 
   //ホワイトボード用
@@ -37,11 +37,11 @@ const App = () => {
     switch (sender) {
       case "司会":
         return "bg-blue-100 text-blue-900";
-      case "A子":
+      case "ルフィ":
         return "bg-pink-100 text-pink-900";
-      case "B太":
+      case "ケロロ軍曹":
         return "bg-yellow-100 text-yellow-900";
-      case "C助":
+      case "ナルト":
         return "bg-purple-100 text-purple-900";
       default:
         return "bg-gray-100 text-gray-900";

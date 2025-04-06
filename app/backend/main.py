@@ -9,8 +9,8 @@ import json
 import re
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
 from langsmith import Client
+from pathlib import Path
 
 # LangChain
 model = ChatOpenAI(model="gpt-4o-mini")
@@ -35,31 +35,16 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-# --- キャラ定義・定数 ---
-CHARACTER_PROFILES = {
-    "A子": {
-        "性別": "女性",
-        "年齢": "20代",
-        "職業": "会社員",
-        "趣味": "音楽鑑賞",
-        "性格": "落ち着いた性格で、じっくり物事を考えて発言します。B太と喧嘩中です。B太の発言には厳しくあたります。",
-    },
-    "B太": {
-        "性別": "男性",
-        "年齢": "20代",
-        "職業": "大学生",
-        "趣味": "テレビゲーム",
-        "性格": "明るく、前向きな性格です。A子と喧嘩中です。B太はA子に怒られるとうんざりした様子になります。",
-    },
-    "C助": {
-        "性別": "男性",
-        "年齢": "40代",
-        "職業": "会社役員",
-        "趣味": "ゴルフ",
-        "性格": "温厚で、話しやすい雰囲気を持っています。A子とB太が喧嘩中であることは知っていますが、蚊帳の外という感じです。「若い人は元気だなぁ」と楽観的な反応をします。",
-    },
-}
-CHARACTER_NAMES = list(CHARACTER_PROFILES.keys())
+# キャラ定義用JSONファイルの読み込み
+with open(Path("character_profiles.json"), "r", encoding="utf-8") as f:
+    ALL_CHARACTER_PROFILES = json.load(f)
+
+# 今回使用するキャラを指定
+selected_names = ["ルフィ", "ケロロ軍曹", "ナルト"]
+
+# 指定されたキャラだけ抽出
+CHARACTER_PROFILES = {name: ALL_CHARACTER_PROFILES[name] for name in selected_names}
+CHARACTER_NAMES = selected_names
 
 # 司会の最初の発言も入れて6回
 MAX_SPEAK_COUNT = 6

@@ -1,4 +1,4 @@
-type SpeakerName = "司会" | "A子" | "B太" | "C助";
+type SpeakerName = "司会" | "ルフィ" | "ケロロ軍曹" | "ナルト";
 
 type WhiteboardProps = {
   whiteboard: Record<SpeakerName, string[]>;
@@ -9,11 +9,11 @@ const getHeaderStyle = (name: SpeakerName) => {
   switch (name) {
     case "司会":
       return "bg-blue-100 text-blue-900 border-blue-300";
-    case "A子":
+    case "ルフィ":
       return "bg-pink-100 text-pink-900 border-pink-300";
-    case "B太":
+    case "ケロロ軍曹":
       return "bg-yellow-100 text-yellow-900 border-yellow-300";
-    case "C助":
+    case "ナルト":
       return "bg-purple-100 text-purple-900 border-purple-300";
     default:
       return "bg-gray-100 text-gray-900 border-gray-300";
