@@ -1,9 +1,4 @@
 {
-  "司会": {
-    "bubbleClass": "bg-blue-100 text-blue-900",
-    "headerClass": "bg-blue-100 text-blue-900 border-blue-300",
-    "imagePath": "/assets/moderator.png"
-  },
   "ルフィ": {
     "bubbleClass": "bg-pink-100 text-pink-900",
     "headerClass": "bg-pink-100 text-pink-900 border-pink-300",

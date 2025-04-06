@@ -108,7 +108,10 @@ const App = () => {
         </div>
         {/* ホワイトボード */}
       </div>
-      <WhiteboardSection whiteboard={whiteboard} />
+      <WhiteboardSection
+        whiteboard={whiteboard}
+        selectedCharacters={selectedCharacters}
+      />
     </div>
   );
 };
