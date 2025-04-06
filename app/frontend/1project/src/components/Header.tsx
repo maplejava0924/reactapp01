@@ -11,7 +11,7 @@ type HeaderProps = {
 const Header: FC<HeaderProps> = ({ selectedCharacters, characterStyles }) => {
   return (
     <header className="h-16 px-4 bg-green-800 text-white text-xl font-bold flex justify-between items-center">
-      <span>オススメ映画について話そう</span>
+      <span>オススメ映画トークルーム</span>
       <div className="flex items-center">
         {selectedCharacters.map((char, index) => (
           <div key={char} className={`relative ${index !== 0 ? "-ml-3" : ""}`}>
