@@ -1,0 +1,18 @@
+{
+  "司会": {
+    "bubbleClass": "bg-blue-100 text-blue-900",
+    "headerClass": "bg-blue-100 text-blue-900 border-blue-300"
+  },
+  "ルフィ": {
+    "bubbleClass": "bg-pink-100 text-pink-900",
+    "headerClass": "bg-pink-100 text-pink-900 border-pink-300"
+  },
+  "ケロロ軍曹": {
+    "bubbleClass": "bg-yellow-100 text-yellow-900",
+    "headerClass": "bg-yellow-100 text-yellow-900 border-yellow-300"
+  },
+  "ナルト": {
+    "bubbleClass": "bg-purple-100 text-purple-900",
+    "headerClass": "bg-purple-100 text-purple-900 border-purple-300"
+  }
+}

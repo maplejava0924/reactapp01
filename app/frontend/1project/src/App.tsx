@@ -3,18 +3,23 @@ import { useState, useEffect, useRef } from "react";
 import doraemonIcon from "./assets/doraemon.png";
 import WhiteboardSection from "./WhiteboardSection";
 import FormSection from "./FormSection";
+import characterStylesJson from "./assets/character_styles.json";
+
+// 型定義をつけてインデックスアクセスできるようにする
+const characterStyles: Record<
+  string,
+  { bubbleClass: string; headerClass: string }
+> = characterStylesJson;
 
 //ホワイトボード用
-type SpeakerName = "司会" | "ルフィ" | "ケロロ軍曹" | "ナルト";
+type SpeakerName = string;
+
 type WhiteboardState = Record<SpeakerName, string[]>;
 
 const App = () => {
-  const initialBoardState: WhiteboardState = {
-    司会: ["（未回答）"],
-    ルフィ: ["（未回答）"],
-    ケロロ軍曹: ["（未回答）"],
-    ナルト: ["（未回答）"],
-  };
+  const initialBoardState: WhiteboardState = Object.fromEntries(
+    Object.keys(characterStyles).map((name) => [name, ["（未回答）"]])
+  );
 
   //ホワイトボード用
   const [whiteboard, setWhiteboard] =
@@ -34,18 +39,7 @@ const App = () => {
 
   // 発言者によって吹き出し色を切り替え
   const getBubbleStyle = (sender: string) => {
-    switch (sender) {
-      case "司会":
-        return "bg-blue-100 text-blue-900";
-      case "ルフィ":
-        return "bg-pink-100 text-pink-900";
-      case "ケロロ軍曹":
-        return "bg-yellow-100 text-yellow-900";
-      case "ナルト":
-        return "bg-purple-100 text-purple-900";
-      default:
-        return "bg-gray-100 text-gray-900";
-    }
+    return characterStyles[sender]?.bubbleClass || "bg-gray-100 text-gray-900";
   };
 
   // メッセージが追加されたら最下部へスクロール
@@ -66,6 +60,7 @@ const App = () => {
     setUserMessage("");
   };
 
+  //バックエンドの呼び出し処理
   const startStreaming = () => {
     setIsStreaming(true);
     const eventSource = new EventSource(

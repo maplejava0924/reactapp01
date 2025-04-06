@@ -1,23 +1,23 @@
-type SpeakerName = "司会" | "ルフィ" | "ケロロ軍曹" | "ナルト";
+import characterStylesJson from "./assets/character_styles.json";
+
+// 型定義をつけてインデックスアクセスできるようにする
+const characterStyles: Record<
+  string,
+  { bubbleClass: string; headerClass: string }
+> = characterStylesJson;
+
+type SpeakerName = string;
 
 type WhiteboardProps = {
   whiteboard: Record<SpeakerName, string[]>;
 };
 
 // ラベル部分（「◯◯の意見」）用の背景色
-const getHeaderStyle = (name: SpeakerName) => {
-  switch (name) {
-    case "司会":
-      return "bg-blue-100 text-blue-900 border-blue-300";
-    case "ルフィ":
-      return "bg-pink-100 text-pink-900 border-pink-300";
-    case "ケロロ軍曹":
-      return "bg-yellow-100 text-yellow-900 border-yellow-300";
-    case "ナルト":
-      return "bg-purple-100 text-purple-900 border-purple-300";
-    default:
-      return "bg-gray-100 text-gray-900 border-gray-300";
-  }
+const getHeaderStyle = (name: string) => {
+  return (
+    characterStyles[name]?.headerClass ||
+    "bg-gray-100 text-gray-900 border-gray-300"
+  );
 };
 
 const WhiteboardSection = ({ whiteboard }: WhiteboardProps) => {
