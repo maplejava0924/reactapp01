@@ -1,7 +1,5 @@
-// FormSection.tsx
 import { FC } from "react";
-import characterStylesJson from "./assets/character_styles.json";
-
+import characterStylesJson from "../assets/character_styles.json";
 type FormProps = {
   selectedGenres: string[];
   setSelectedGenres: (genres: string[]) => void;

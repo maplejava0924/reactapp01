@@ -1,7 +1,5 @@
-// src/ChatSection.tsx
 import { useEffect, useRef } from "react";
-import characterStylesJson from "./assets/character_styles.json";
-
+import characterStylesJson from "../assets/character_styles.json";
 const characterStyles: Record<
   string,
   { bubbleClass: string; headerClass: string; imagePath: string }

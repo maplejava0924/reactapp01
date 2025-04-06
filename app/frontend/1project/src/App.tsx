@@ -1,8 +1,9 @@
 // App.tsx
 import { useRef, useState, useEffect } from "react";
-import FormSection from "./FormSection";
-import ChatSection from "./ChatSection";
-import WhiteboardSection from "./WhiteboardSection";
+import FormSection from "./components/FormSection";
+import ChatSection from "./components/ChatSection";
+import WhiteboardSection from "./components/WhiteboardSection";
+import Header from "./components/Header";
 import characterStylesJson from "./assets/character_styles.json";
 import { useStreamingChat } from "./hooks/useStreamingChat";
 
@@ -71,27 +72,11 @@ const App = () => {
         setSelectedCharacters={setSelectedCharacters}
       />
       <div className="flex flex-col w-2/4">
-        <header className="h-16 px-4 bg-green-800 text-white text-xl font-bold flex justify-between items-center">
-          <span>オススメ映画について話そう</span>
-          <div className="flex items-center">
-            {selectedCharacters.map((char, index) => (
-              <div
-                key={char}
-                className={`relative ${index !== 0 ? "-ml-3" : ""}`}
-              >
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center border border-white shadow">
-                  <img
-                    src={
-                      characterStyles[char]?.imagePath || "/assets/default.png"
-                    }
-                    alt={char}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </header>
+        {/* ヘッダー */}
+        <Header
+          selectedCharacters={selectedCharacters}
+          characterStyles={characterStyles}
+        />
 
         {/* チャット画面 */}
         <ChatSection

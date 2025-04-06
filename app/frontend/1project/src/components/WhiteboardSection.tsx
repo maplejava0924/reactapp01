@@ -1,4 +1,4 @@
-import characterStylesJson from "./assets/character_styles.json";
+import characterStylesJson from "../assets/character_styles.json";
 
 // 型定義をつけてインデックスアクセスできるようにする
 const characterStyles: Record<
