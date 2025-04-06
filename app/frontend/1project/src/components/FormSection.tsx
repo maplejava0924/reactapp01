@@ -93,6 +93,7 @@ const FormSection: FC<FormProps> = ({
         {characters.map((char) => {
           const isSelected = selectedCharacters.includes(char);
           const isDisabled = selectedCharacters.length === 3 && !isSelected;
+          const isHost = selectedCharacters[0] === char; // 👑司会フラグ
 
           const imagePath =
             characterStyles[char]?.imagePath || "/assets/default.png";
@@ -101,12 +102,19 @@ const FormSection: FC<FormProps> = ({
             <div
               key={char}
               onClick={() => !isDisabled && toggleCharacter(char)}
-              className={`cursor-pointer flex flex-col items-center border rounded-xl p-2 transition-all duration-200 ${
+              className={`relative cursor-pointer flex flex-col items-center border rounded-xl p-2 transition-all duration-200 ${
                 isSelected
                   ? "border-purple-500 shadow-md bg-purple-50"
                   : "border-gray-300 bg-white hover:border-purple-300 hover:bg-purple-50 hover:shadow"
               } ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
             >
+              {/* 👑司会マーク */}
+              {isHost && (
+                <span className="absolute top-1 right-1 text-xs bg-yellow-300 text-black px-1 rounded z-10">
+                  👑司会
+                </span>
+              )}
+
               <img
                 src={imagePath}
                 alt={char}
