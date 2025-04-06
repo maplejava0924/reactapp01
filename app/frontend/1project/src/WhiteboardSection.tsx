@@ -3,7 +3,7 @@ import characterStylesJson from "./assets/character_styles.json";
 // 型定義をつけてインデックスアクセスできるようにする
 const characterStyles: Record<
   string,
-  { bubbleClass: string; headerClass: string }
+  { bubbleClass: string; headerClass: string; imagePath: string }
 > = characterStylesJson;
 
 type SpeakerName = string;

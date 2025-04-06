@@ -1,6 +1,5 @@
 // App.tsx
 import { useState, useEffect, useRef } from "react";
-import doraemonIcon from "./assets/doraemon.png";
 import WhiteboardSection from "./WhiteboardSection";
 import FormSection from "./FormSection";
 import characterStylesJson from "./assets/character_styles.json";
@@ -8,8 +7,13 @@ import characterStylesJson from "./assets/character_styles.json";
 // 型定義をつけてインデックスアクセスできるようにする
 const characterStyles: Record<
   string,
-  { bubbleClass: string; headerClass: string }
+  { bubbleClass: string; headerClass: string; imagePath: string }
 > = characterStylesJson;
+
+// 各吹き出しに使う画像を取得
+const getImagePath = (sender: string) => {
+  return characterStyles[sender]?.imagePath || "/assets/default.png";
+};
 
 //ホワイトボード用
 type SpeakerName = string;
@@ -163,10 +167,11 @@ const App = () => {
                 <div className="flex items-center">
                   <div className="flex flex-col items-center mr-2 w-14">
                     <img
-                      src={doraemonIcon}
+                      src={getImagePath(msg.sender)}
                       alt={msg.sender}
                       className="w-10 h-10 rounded-full"
                     />
+
                     <p className="text-xs font-bold text-gray-700 mt-1 text-center">
                       {msg.sender}
                     </p>

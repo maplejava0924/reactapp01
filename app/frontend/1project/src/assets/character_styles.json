@@ -1,18 +1,22 @@
 {
   "司会": {
     "bubbleClass": "bg-blue-100 text-blue-900",
-    "headerClass": "bg-blue-100 text-blue-900 border-blue-300"
+    "headerClass": "bg-blue-100 text-blue-900 border-blue-300",
+    "imagePath": "/assets/moderator.png"
   },
   "ルフィ": {
     "bubbleClass": "bg-pink-100 text-pink-900",
-    "headerClass": "bg-pink-100 text-pink-900 border-pink-300"
+    "headerClass": "bg-pink-100 text-pink-900 border-pink-300",
+    "imagePath": "/assets/luffy.png"
   },
   "ケロロ軍曹": {
     "bubbleClass": "bg-yellow-100 text-yellow-900",
-    "headerClass": "bg-yellow-100 text-yellow-900 border-yellow-300"
+    "headerClass": "bg-yellow-100 text-yellow-900 border-yellow-300",
+    "imagePath": "/assets/keroro.png"
   },
   "ナルト": {
     "bubbleClass": "bg-purple-100 text-purple-900",
-    "headerClass": "bg-purple-100 text-purple-900 border-purple-300"
+    "headerClass": "bg-purple-100 text-purple-900 border-purple-300",
+    "imagePath": "/assets/naruto.png"
   }
 }
