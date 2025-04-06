@@ -5,6 +5,7 @@ export const useStreamingChat = ({
   userMessage,
   selectedGenres,
   seenMovies,
+  selectedCharacters,
   onReceiveMessage,
   onReceiveSummary,
   onStreamEnd,
@@ -12,6 +13,7 @@ export const useStreamingChat = ({
   userMessage: string;
   selectedGenres: string[];
   seenMovies: string;
+  selectedCharacters: string[];
   onReceiveMessage: (speaker: string, text: string) => void;
   onReceiveSummary: (speaker: string, text: string) => void;
   onStreamEnd: () => void;
@@ -40,7 +42,9 @@ export const useStreamingChat = ({
         userMessage
       )}&genres=${encodeURIComponent(
         selectedGenres.join(",")
-      )}&seen_movies=${encodeURIComponent(seenMovies)}`
+      )}&seen_movies=${encodeURIComponent(
+        seenMovies
+      )}&characters=${encodeURIComponent(selectedCharacters.join(","))}`
     );
 
     // 通常のメッセージ受信

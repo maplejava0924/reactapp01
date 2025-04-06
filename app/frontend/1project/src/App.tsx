@@ -33,6 +33,7 @@ const App = () => {
       userMessage,
       selectedGenres,
       seenMovies,
+      selectedCharacters,
       onReceiveMessage: (speaker, text) => {
         setMessages((prev) => [...prev, { sender: speaker, text }]);
       },

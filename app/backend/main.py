@@ -39,13 +39,6 @@ logging.basicConfig(
 with open(Path("character_profiles.json"), "r", encoding="utf-8") as f:
     ALL_CHARACTER_PROFILES = json.load(f)
 
-# 今回使用するキャラを指定
-selected_names = ["ルフィ", "ケロロ軍曹", "ナルト"]
-
-# 指定されたキャラだけ抽出
-CHARACTER_PROFILES = {name: ALL_CHARACTER_PROFILES[name] for name in selected_names}
-CHARACTER_NAMES = selected_names
-
 # 司会の最初の発言も入れて6回
 MAX_SPEAK_COUNT = 6
 
@@ -53,9 +46,13 @@ MAX_SPEAK_COUNT = 6
 # --- 状態定義 ---
 class AppState(TypedDict):
     thema: str  # 会話のテーマ（司会やエージェントが発言する際に使用）
-    user_message: str  # ユーザが送信フォームで入力した内容。クエリパラメータで受け取り、司会LLMに読み込ませる。
-    genres: str  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会LLMに読み込ませる。
-    seen_movies: str  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会LLMに読み込ませる。
+    user_message: str  # ユーザが送信フォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
+    genres: str  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
+    seen_movies: str  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
+    character_names: List[
+        str
+    ]  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会L、スピーカーに読み込ませる。
+    character_profiles: dict[str, dict[str, str]]
     last_speaker: str  # 直前の発言者
     last_comment: str  # 直前の発言内容（要約エージェントがこれを要約する）
     summary: Annotated[
@@ -74,12 +71,15 @@ def moderator(state: AppState):
     genres = state.get("genres", "")
     seen_movies = state.get("seen_movies", "")
     speak_count = state["speak_count"]
+    character_names = state["character_names"]
+    character_profiles = state["character_profiles"]
+
     # 司会に憑依させるキャラクター（最初に選ばれたキャラ）
-    last_speaker = CHARACTER_NAMES[0]
+    last_speaker = character_names[0]
 
     # 誰も話してないならfirst-templateを実行
     if speak_count == 0:
-        profile = CHARACTER_PROFILES.get(last_speaker, {})
+        profile = character_profiles.get(last_speaker, {})
         # ChatPromptTemplateに食わせる辞書型のInput
         inputs = {
             "name": last_speaker,
@@ -110,7 +110,7 @@ def moderator(state: AppState):
     # 会話の上限数に達したならsummary-templateを実行
     if speak_count >= MAX_SPEAK_COUNT:
         summary_items = state.get("summary", [])
-        profile = CHARACTER_PROFILES.get(last_speaker, {})
+        profile = character_profiles.get(last_speaker, {})
         inputs = {
             "name": last_speaker,
             "gender": profile["性別"],
@@ -139,9 +139,9 @@ def moderator(state: AppState):
     last_comment = state.get("last_comment")
     summary_items = state.get("summary", [])
     # 司会キャラ（最初のキャラ）は除く
-    candidate_names = [name for name in CHARACTER_NAMES if name != last_speaker]
+    candidate_names = [name for name in character_names if name != last_speaker]
 
-    profile = CHARACTER_PROFILES.get(last_speaker, {})
+    profile = character_profiles.get(last_speaker, {})
     inputs = {
         "name": last_speaker,
         "gender": profile["性別"],
@@ -182,8 +182,8 @@ def moderator(state: AppState):
 def speaker_agent(state: AppState):
     speaker = state.get("next_speaker")
     summary_items = state.get("summary", [])
-
-    profile = CHARACTER_PROFILES.get(speaker, {})
+    character_profiles = state["character_profiles"]
+    profile = character_profiles.get(speaker, {})
     inputs = {
         "name": speaker,
         "gender": profile["性別"],
@@ -282,6 +282,10 @@ async def chat_stream(request: Request):
     user_message = request.query_params.get("user_message", "")
     genres = request.query_params.get("genres", "")
     seen_movies = request.query_params.get("seen_movies", "")
+    characters = request.query_params.get("characters", "")
+    selected_names = characters.split(",")
+    # 選ばれたキャラクターのプロフィール
+    character_profiles = {name: ALL_CHARACTER_PROFILES[name] for name in selected_names}
 
     async def event_generator():
         # Stateの初期値の決定
@@ -297,6 +301,8 @@ async def chat_stream(request: Request):
             "is_summary": False,
             "genres": genres,
             "seen_movies": seen_movies,
+            "character_names": selected_names,
+            "character_profiles": character_profiles,
         }
 
         # フローの実行（LangGraphの状態管理が開始）
