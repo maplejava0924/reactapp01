@@ -74,12 +74,20 @@ def moderator(state: AppState):
     genres = state.get("genres", "")
     seen_movies = state.get("seen_movies", "")
     speak_count = state["speak_count"]
-    last_speaker = "司会"
+    # 司会に憑依させるキャラクター（最初に選ばれたキャラ）
+    last_speaker = CHARACTER_NAMES[0]
 
     # 誰も話してないならfirst-templateを実行
     if speak_count == 0:
+        profile = CHARACTER_PROFILES.get(last_speaker, {})
         # ChatPromptTemplateに食わせる辞書型のInput
         inputs = {
+            "name": last_speaker,
+            "gender": profile["性別"],
+            "age": profile["年齢"],
+            "job": profile["職業"],
+            "hobby": profile["趣味"],
+            "personality": profile["性格"],
             "thema": thema,
             "genres": genres if genres else "（指定なし）",
             "seen_movies": seen_movies if seen_movies else "（特になし）",
@@ -102,8 +110,14 @@ def moderator(state: AppState):
     # 会話の上限数に達したならsummary-templateを実行
     if speak_count >= MAX_SPEAK_COUNT:
         summary_items = state.get("summary", [])
-
+        profile = CHARACTER_PROFILES.get(last_speaker, {})
         inputs = {
+            "name": last_speaker,
+            "gender": profile["性別"],
+            "age": profile["年齢"],
+            "job": profile["職業"],
+            "hobby": profile["趣味"],
+            "personality": profile["性格"],
             "thema": thema,
             "summary_text": "\n".join(
                 [f"{item['speaker']}：{item['text']}" for item in summary_items]
@@ -124,10 +138,19 @@ def moderator(state: AppState):
     # 上記いずれでもないならnext-speaker-templateを実行
     last_comment = state.get("last_comment")
     summary_items = state.get("summary", [])
+    # 司会キャラ（最初のキャラ）は除く
+    candidate_names = [name for name in CHARACTER_NAMES if name != last_speaker]
 
+    profile = CHARACTER_PROFILES.get(last_speaker, {})
     inputs = {
+        "name": last_speaker,
+        "gender": profile["性別"],
+        "age": profile["年齢"],
+        "job": profile["職業"],
+        "hobby": profile["趣味"],
+        "personality": profile["性格"],
         "thema": thema,
-        "character_names": ", ".join(CHARACTER_NAMES),
+        "character_names": ", ".join(candidate_names),
         "last_comment": last_comment,
         "summary_text": "\n".join(
             [f"{item['speaker']}：{item['text']}" for item in summary_items]
