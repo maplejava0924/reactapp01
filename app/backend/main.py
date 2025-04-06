@@ -62,6 +62,8 @@ MAX_SPEAK_COUNT = 6
 class AppState(TypedDict):
     thema: str  # 会話のテーマ（司会やエージェントが発言する際に使用）
     user_message: str  # ユーザが送信フォームで入力した内容。クエリパラメータで受け取り、司会LLMに読み込ませる。
+    genres: str  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会LLMに読み込ませる。
+    seen_movies: str  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会LLMに読み込ませる。
     last_speaker: str  # 直前の発言者
     last_comment: str  # 直前の発言内容（要約エージェントがこれを要約する）
     summary: Annotated[
@@ -78,6 +80,8 @@ def moderator(state: AppState):
     model = ChatOpenAI(model="gpt-4o-mini")
     thema = state["thema"]
     user_message = state.get("user_message", "")
+    genres = state.get("genres", "")
+    seen_movies = state.get("seen_movies", "")
     speak_count = state["speak_count"]
     last_speaker = "司会"
 
@@ -86,10 +90,18 @@ def moderator(state: AppState):
         system_message = "あなたは会話の司会進行役です。"
         human_message = f"""
 以下のテーマでこれから会話を始めます。
-参加者が話しやすくなるような導入コメントを司会として一文で出力してください。
+ユーザからのインプットに触れ、議論をどういう方向性にするか検討し、参加者が話しやすくなるような導入コメントを出力してください。
+ここでいう「ユーザ」とは、以下のテーマで議論する様子を見たいと思っている、この議論の聴講者です。
+あなたの役割はユーザからの指示の意図を汲みこれからの議論がユーザの意図に沿うものになるようコントロールすることです。
 
 # テーマ
 {thema}
+
+# ユーザが見たいジャンル
+{genres if genres else "（指定なし）"}
+
+# ユーザが今まで見た映画
+{seen_movies if seen_movies else "（特になし）"}
 
 # ユーザからの補足メッセージ
 {user_message if user_message else "特になし"}
@@ -141,6 +153,8 @@ def moderator(state: AppState):
     human_message = f"""
 テーマ: {thema}
 議論が特定の話題に偏ってきた場合は、次の話者に対して違った観点での発言を求めるようにしてください。
+※ 必ずまだ発言していない人を優先してください。発言者名は以下から選んでください：
+{", ".join(CHARACTER_NAMES)}
 
 直前のコメント：
 {last_comment}
@@ -153,8 +167,6 @@ def moderator(state: AppState):
 #次の話者：{{話者名}}
 #コメント：{{自然な司会コメント}}
 
-※ まだ発言していない人を優先してください。発言者名は以下から選んでください：
-{", ".join(CHARACTER_NAMES)}
 """
 
     response = model.invoke(
@@ -301,6 +313,8 @@ flow = graph.compile()
 @app.get("/chat/stream")
 async def chat_stream(request: Request):
     user_message = request.query_params.get("user_message", "")
+    genres = request.query_params.get("genres", "")
+    seen_movies = request.query_params.get("seen_movies", "")
 
     async def event_generator():
         # Stateの初期値の決定
@@ -314,6 +328,8 @@ async def chat_stream(request: Request):
             "last_comment": "",
             "last_speaker": "",
             "is_summary": False,
+            "genres": genres,
+            "seen_movies": seen_movies,
         }
 
         async for event in flow.astream(state):

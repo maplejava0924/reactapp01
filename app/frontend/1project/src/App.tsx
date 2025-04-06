@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import doraemonIcon from "./assets/doraemon.png";
 import WhiteboardSection from "./WhiteboardSection";
+import FormSection from "./FormSection";
 
 //ホワイトボード用
 type SpeakerName = "司会" | "A子" | "B太" | "C助";
@@ -27,6 +28,9 @@ const App = () => {
   const [userMessage, setUserMessage] = useState(""); // 送信フォームの入力値
   const [thinkingAgent, setThinkingAgent] = useState<string | null>(null); //考え中のエージェント名
   const [thinkingDots, setThinkingDots] = useState(""); //「○○が入力しています…」の「.」→「..」→「...」のアニメーション用
+
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [seenMovies, setSeenMovies] = useState<string>("");
 
   // 発言者によって吹き出し色を切り替え
   const getBubbleStyle = (sender: string) => {
@@ -67,7 +71,9 @@ const App = () => {
     const eventSource = new EventSource(
       `http://127.0.0.1:5000/chat/stream?user_message=${encodeURIComponent(
         userMessage
-      )}`
+      )}&genres=${encodeURIComponent(
+        selectedGenres.join(",")
+      )}&seen_movies=${encodeURIComponent(seenMovies)}`
     );
 
     // 通常のメッセージ受信
@@ -136,7 +142,14 @@ const App = () => {
 
   return (
     <div className="flex h-screen">
-      <div className="flex flex-col w-2/3">
+      {/* 左カラム：フォーム */}
+      <FormSection
+        selectedGenres={selectedGenres}
+        setSelectedGenres={setSelectedGenres}
+        seenMovies={seenMovies}
+        setSeenMovies={setSeenMovies}
+      />
+      <div className="flex flex-col w-2/4">
         {/* ヘッダー */}
         <header className="p-4 bg-green-800 text-white text-xl font-bold text-center">
           AIグループチャット
