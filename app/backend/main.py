@@ -136,7 +136,6 @@ def moderator(state: AppState):
         }
 
     # 上記いずれでもないならnext-speaker-templateを実行
-    last_comment = state.get("last_comment")
     summary_items = state.get("summary", [])
     # 司会キャラ（最初のキャラ）は除く
     candidate_names = [name for name in character_names if name != last_speaker]
@@ -151,7 +150,6 @@ def moderator(state: AppState):
         "personality": profile["性格"],
         "thema": thema,
         "character_names": ", ".join(candidate_names),
-        "last_comment": last_comment,
         "summary_text": "\n".join(
             [f"{item['speaker']}：{item['text']}" for item in summary_items]
         ),
@@ -164,8 +162,8 @@ def moderator(state: AppState):
     response_text = response.content
 
     # LLMの回答から必要な情報を抽出
-    match_speaker = re.search(r"#次の話者：(.+)", response_text)
-    match_comment = re.search(r"#コメント：(.+)", response_text)
+    match_speaker = re.search(r"次の話者：(.+)", response_text)
+    match_comment = re.search(r"コメント：(.+)", response_text)
 
     next_speaker = match_speaker.group(1).strip() if match_speaker else "未定"
     last_comment = match_comment.group(1).strip() if match_comment else response_text
