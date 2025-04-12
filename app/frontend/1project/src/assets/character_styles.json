@@ -13,5 +13,20 @@
     "bubbleClass": "bg-purple-100 text-purple-900",
     "headerClass": "bg-purple-100 text-purple-900 border-purple-300",
     "imagePath": "/assets/naruto.png"
+  },
+  "ミッキー": {
+    "bubbleClass": "bg-red-100 text-red-900",
+    "headerClass": "bg-red-100 text-red-900 border-red-300",
+    "imagePath": "/assets/mickey.png"
+  },
+  "サトシ": {
+    "bubbleClass": "bg-blue-100 text-blue-900",
+    "headerClass": "bg-blue-100 text-blue-900 border-blue-300",
+    "imagePath": "/assets/satoshi.jpg"
+  },
+  "五条悟": {
+    "bubbleClass": "bg-blue-100 text-blue-900",
+    "headerClass": "bg-blue-100 text-blue-900 border-blue-300",
+    "imagePath": "/assets/gojo.jpg"
   }
 }
