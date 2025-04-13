@@ -102,7 +102,11 @@ const App = () => {
           <button
             className="btn text-white disabled:bg-gray-400 bg-blue-500 hover:bg-blue-600"
             onClick={handleUserMessage}
-            disabled={isStreaming || selectedCharacters.length !== 3}
+            disabled={
+              isStreaming ||
+              selectedCharacters.length !== 3 ||
+              selectedGenres.length === 0
+            }
           >
             送信
           </button>

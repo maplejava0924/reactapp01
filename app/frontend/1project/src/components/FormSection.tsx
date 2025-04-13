@@ -40,6 +40,7 @@ const characters = [
   "坂田銀時",
   "神楽",
   "志村新八",
+  "星野アイ",
 ];
 
 const characterStyles = characterStylesJson as Record<
@@ -58,7 +59,7 @@ const FormSection: FC<FormProps> = ({
   const toggleGenre = (genre: string) => {
     if (selectedGenres.includes(genre)) {
       setSelectedGenres(selectedGenres.filter((g) => g !== genre));
-    } else {
+    } else if (selectedGenres.length < 3) {
       setSelectedGenres([...selectedGenres, genre]);
     }
   };
@@ -73,22 +74,29 @@ const FormSection: FC<FormProps> = ({
 
   return (
     <div className="w-1/4 p-4 bg-gray-50 border-r border-gray-300 overflow-y-auto">
-      <h2 className="text-lg font-bold mb-2">🎬 映画ジャンル（必須）</h2>
+      <h2 className="text-lg font-bold mb-2">
+        🎬 映画ジャンル（必須 3つまで）
+      </h2>
       <div className="flex flex-wrap gap-2 mb-6">
-        {genres.map((genre) => (
-          <button
-            key={genre}
-            className={`px-3 py-1 rounded-full border text-sm ${
-              selectedGenres.includes(genre)
-                ? "bg-blue-500 text-white"
-                : "bg-white text-gray-700"
-            }`}
-            onClick={() => toggleGenre(genre)}
-            type="button"
-          >
-            {genre}
-          </button>
-        ))}
+        {genres.map((genre) => {
+          const isSelected = selectedGenres.includes(genre);
+          const isDisabled = selectedGenres.length >= 3 && !isSelected;
+
+          return (
+            <button
+              key={genre}
+              className={`px-3 py-1 rounded-full border text-sm transition ${
+                isSelected
+                  ? "bg-blue-500 text-white"
+                  : "bg-white text-gray-700 hover:bg-blue-100"
+              } ${isDisabled ? "opacity-40 cursor-not-allowed" : ""}`}
+              onClick={() => !isDisabled && toggleGenre(genre)}
+              type="button"
+            >
+              {genre}
+            </button>
+          );
+        })}
       </div>
 
       <h2 className="text-lg font-bold mb-2">📽 今まで見た映画（任意）</h2>
