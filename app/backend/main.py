@@ -235,7 +235,7 @@ def speaker_agent(state: AppState):
         "summary_text": "\n".join(
             [f"{item['speaker']}：{item['text']}" for item in summary_items]
         ),
-        "search_results": "\n".join(tool_results)
+        "tool_results": "\n".join(tool_results)
         if tool_results
         else "特に検索は行っていません。",
     }
