@@ -7,10 +7,12 @@ import asyncio
 import logging
 import json
 import re
+import os
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langsmith import Client
 from pathlib import Path
+import requests
 
 # LangChain
 model = ChatOpenAI(model="gpt-4o-mini")
@@ -47,7 +49,9 @@ MAX_SPEAK_COUNT = 6
 class AppState(TypedDict):
     thema: str  # 会話のテーマ（司会やエージェントが発言する際に使用）
     user_message: str  # ユーザが送信フォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
-    genres: str  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
+    genres: List[
+        str
+    ]  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
     seen_movies: str  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
     character_names: List[
         str
@@ -68,7 +72,8 @@ class AppState(TypedDict):
 def moderator(state: AppState):
     thema = state["thema"]
     user_message = state.get("user_message", "")
-    genres = state.get("genres", "")
+    genres_list = state.get("genres", [])
+    genres_text = ", ".join(genres_list) if genres_list else "（指定なし）"
     seen_movies = state.get("seen_movies", "")
     speak_count = state["speak_count"]
     character_names = state["character_names"]
@@ -89,7 +94,7 @@ def moderator(state: AppState):
             "hobby": profile["趣味"],
             "personality": profile["性格"],
             "thema": thema,
-            "genres": genres if genres else "（指定なし）",
+            "genres": genres_text,
             "seen_movies": seen_movies if seen_movies else "（特になし）",
             "user_message": user_message if user_message else "特になし",
         }
@@ -176,12 +181,48 @@ def moderator(state: AppState):
     }
 
 
+# 検索キーワードをインプットに検索結果を返す
+def search_tavily(query: str) -> List[str]:
+    url = "https://api.tavily.com/search"
+    payload = {
+        "api_key": os.environ["TAVILY_API_KEY"],
+        "query": query,
+        "search_depth": "advanced",
+        "max_results": 3,
+        "include_answer": False,
+    }
+    response = requests.post(url, json=payload)
+    response.raise_for_status()
+    results = response.json().get("results", [])
+    return [
+        f"{item['title']}（{item['url']}）\n{item.get('content', '')}"
+        for item in results
+    ]
+
+
 # --- 発言エージェント ---
 def speaker_agent(state: AppState):
     speaker = state.get("next_speaker")
     summary_items = state.get("summary", [])
     character_profiles = state["character_profiles"]
     profile = character_profiles.get(speaker, {})
+    speak_count = state["speak_count"]
+    thema = state.get("thema", "")
+    last_comment = state.get("last_comment", "")
+    tool_results = []
+
+    # Web検索エージェント tavilyの使用
+    if speak_count == 1:
+        genres = state.get("genres", [])
+        first_genre = genres[0] if genres else "映画"
+        user_query = f"{first_genre} 映画 オススメ"
+
+        try:
+            tool_results = search_tavily(user_query)
+        except Exception as e:
+            tool_results = ["検索に失敗しました：" + str(e)]
+
+    # ▼ prompt用のinputsを作成
     inputs = {
         "name": speaker,
         "gender": profile["性別"],
@@ -189,11 +230,14 @@ def speaker_agent(state: AppState):
         "job": profile["職業"],
         "hobby": profile["趣味"],
         "personality": profile["性格"],
-        "thema": state.get("thema", ""),
-        "last_comment": state.get("last_comment", ""),
+        "thema": thema,
+        "last_comment": last_comment,
         "summary_text": "\n".join(
             [f"{item['speaker']}：{item['text']}" for item in summary_items]
         ),
+        "search_results": "\n".join(tool_results)
+        if tool_results
+        else "特に検索は行っていません。",
     }
 
     prompt = client.pull_prompt("maplejava/speaker-template")
@@ -204,7 +248,7 @@ def speaker_agent(state: AppState):
     return {
         "last_speaker": speaker,
         "last_comment": response.content,
-        "speak_count": state["speak_count"] + 1,
+        "speak_count": speak_count + 1,
         "summary_done": False,
         "is_summary": False,
     }
@@ -278,7 +322,11 @@ flow = graph.compile()
 async def chat_stream(request: Request):
     # フロントエンドから送られてきたデータの取り出し
     user_message = request.query_params.get("user_message", "")
-    genres = request.query_params.get("genres", "")
+    genres_raw = request.query_params.get("genres", "")
+    genre_list = [
+        g.strip() for g in genres_raw.split(",") if g.strip()
+    ]  # ←空やスペースも除く
+
     seen_movies = request.query_params.get("seen_movies", "")
     characters = request.query_params.get("characters", "")
     selected_names = characters.split(",")
@@ -297,7 +345,7 @@ async def chat_stream(request: Request):
             "last_comment": "",
             "last_speaker": "",
             "is_summary": False,
-            "genres": genres,
+            "genres": genre_list,
             "seen_movies": seen_movies,
             "character_names": selected_names,
             "character_profiles": character_profiles,
