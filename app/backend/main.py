@@ -209,11 +209,11 @@ def speaker_agent(state: AppState):
     speak_count = state["speak_count"]
     thema = state.get("thema", "")
     last_comment = state.get("last_comment", "")
+    genres = state.get("genres", [])
     tool_results = []
 
     # Web検索エージェント tavilyの使用
     if speak_count == 1:
-        genres = state.get("genres", [])
         first_genre = genres[0] if genres else "映画"
         user_query = f"{first_genre} 映画 オススメ"
 
