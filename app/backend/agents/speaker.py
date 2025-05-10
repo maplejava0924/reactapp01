@@ -27,10 +27,15 @@ def speaker_agent(state: AppState):
 
         prompt = client.pull_prompt("maplejava/speaker-template")
 
-    # trend分析エージェント filmarksのスクレイピング
+    # trend分析エージェント filmarksのスクレイピング　上映中の映画のレコメンド
     elif speak_count == 2:
-        tool_results = fetch_filmarks_movies()
+        tool_results = fetch_filmarks_movies(10, True)
         prompt = client.pull_prompt("maplejava/speaker-trend")
+
+    # trend分析エージェント filmarksのスクレイピング　公開予定の映画のレコメンド
+    elif speak_count == 3:
+        tool_results = fetch_filmarks_movies(10, False)
+        prompt = client.pull_prompt("maplejava/speaker-trend-coming")
 
     else:
         prompt = client.pull_prompt("maplejava/speaker-template")

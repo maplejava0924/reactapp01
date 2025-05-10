@@ -3,8 +3,7 @@ from bs4 import BeautifulSoup
 import time
 
 BASE_URL = "https://filmarks.com"
-# 上映中の映画一覧
-LIST_URL = f"{BASE_URL}/list/now"
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
 }
@@ -32,9 +31,17 @@ def get_synopsis_from_meta(detail_url: str) -> str:
 
 
 # 最大10本まで上映中の映画の情報を取得する
-def fetch_filmarks_movies(limit: int = 10) -> list[str]:
+def fetch_filmarks_movies(limit: int = 10, now: bool = True) -> list[str]:
     try:
-        res = requests.get(LIST_URL, headers=HEADERS)
+        # 上映中 or 公開予定の映画URLを切り替え
+        if now:
+            # 上映中の映画一覧
+            list_url = f"{BASE_URL}/list/now"
+        else:
+            # 公開予定の映画一覧
+            list_url = f"{BASE_URL}/list/coming"
+
+        res = requests.get(list_url, headers=HEADERS)
         soup = BeautifulSoup(res.content, "html.parser")
         movies = soup.find_all("div", class_="js-cassette")
         results = []
@@ -48,6 +55,13 @@ def fetch_filmarks_movies(limit: int = 10) -> list[str]:
             genres_section = movie.find("ul", class_="genres")
             if genres_section:
                 genre_list = [li.text.strip() for li in genres_section.find_all("li")]
+
+            release_info = movie.find("div", class_="p-content-cassette__info-main")
+            release_date = "公開日不明"
+            if release_info:
+                span = release_info.find("span")
+                if span:
+                    release_date = span.text.strip()
 
             score_tag = movie.find("div", class_="c-rating__score")
             score = score_tag.text.strip() if score_tag else "スコアなし"
@@ -64,6 +78,7 @@ def fetch_filmarks_movies(limit: int = 10) -> list[str]:
                 f"【映画{i + 1}】\n"
                 f"タイトル: {title}\n"
                 f"ジャンル: {', '.join(genre_list) if genre_list else 'ジャンル記載なし'}\n"
+                f"公開日: {release_date}\n"
                 f"評価スコア: {score}\n"
                 f"あらすじ: {synopsis}"
             )
@@ -71,3 +86,6 @@ def fetch_filmarks_movies(limit: int = 10) -> list[str]:
         return results
     except Exception as e:
         return [f"Filmarksの取得に失敗しました: {str(e)}"]
+
+
+print(fetch_filmarks_movies(10, False))
