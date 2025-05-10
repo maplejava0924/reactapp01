@@ -4,3 +4,5 @@ langchain-core==0.3.49
 langchain-openai
 langgraph==0.3.6
 langgraph-supervisor==0.0.14
+beautifulsoup4
+requests

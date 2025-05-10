@@ -1,6 +1,7 @@
 from config import client, model
 from utils.tavily import search_tavily
 from state_types import AppState
+from utils.filmarks import fetch_filmarks_movies
 
 
 def speaker_agent(state: AppState):
@@ -24,6 +25,16 @@ def speaker_agent(state: AppState):
         except Exception as e:
             tool_results = ["検索に失敗しました：" + str(e)]
 
+        prompt = client.pull_prompt("maplejava/speaker-template")
+
+    # trend分析エージェント filmarksのスクレイピング
+    elif speak_count == 2:
+        tool_results = fetch_filmarks_movies()
+        prompt = client.pull_prompt("maplejava/speaker-trend")
+
+    else:
+        prompt = client.pull_prompt("maplejava/speaker-template")
+
     # ▼ prompt用のinputsを作成
     inputs = {
         "name": speaker,
@@ -40,9 +51,9 @@ def speaker_agent(state: AppState):
         "tool_results": "\n".join(tool_results)
         if tool_results
         else "特に検索は行っていません。",
+        "genres": ", ".join(genres) if genres else "ジャンル指定なし",
     }
 
-    prompt = client.pull_prompt("maplejava/speaker-template")
     prompt_value = prompt.invoke(inputs)
 
     response = model.invoke(prompt_value)
