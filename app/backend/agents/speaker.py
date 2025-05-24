@@ -1,7 +1,7 @@
 from config import client, model
 from utils.tavily import search_tavily
 from state_types import AppState
-from utils.filmarks import fetch_filmarks_movies
+from utils.filmarks import fetch_filmarks_movies, fetch_filmarks_movies_by_genres
 
 
 def speaker_agent(state: AppState):
@@ -37,6 +37,11 @@ def speaker_agent(state: AppState):
     elif speak_count == 3:
         tool_results = fetch_filmarks_movies(10, False)
         prompt = client.pull_prompt("maplejava/speaker-trend-coming")
+
+    elif speak_count == 4:
+        # 複数ジャンルを一括で渡して取得
+        tool_results = fetch_filmarks_movies_by_genres(genres, 5)
+        prompt = client.pull_prompt("maplejava/speaker-trend-genres")
 
     else:
         prompt = client.pull_prompt("maplejava/speaker-template")
