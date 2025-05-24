@@ -31,6 +31,7 @@ def get_synopsis_from_meta(detail_url: str) -> str:
 
 
 # 最大10本まで上映中の映画の情報を取得する
+# nowで上映中の映画を取得するか、公開予定の映画を取得するか選択する
 def fetch_filmarks_movies(limit: int = 10, now: bool = True) -> list[str]:
     try:
         # 上映中 or 公開予定の映画URLを切り替え
@@ -86,6 +87,3 @@ def fetch_filmarks_movies(limit: int = 10, now: bool = True) -> list[str]:
         return results
     except Exception as e:
         return [f"Filmarksの取得に失敗しました: {str(e)}"]
-
-
-print(fetch_filmarks_movies(10, False))

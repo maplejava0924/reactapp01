@@ -4,10 +4,10 @@ import operator
 
 class AppState(TypedDict):
     thema: str  # 会話のテーマ（司会やエージェントが発言する際に使用）
-    user_message: str  # ユーザが送信フォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
+    user_message: str  # ユーザが送信フォームで入力した内容。クエリパラメータで受け取り、司会のみに読み込ませる。
     genres: List[
         str
-    ]  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
+    ]  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会とspeakerに読み込ませる。
     seen_movies: str  # ユーザがフォームで入力した内容。クエリパラメータで受け取り、司会に読み込ませる。
     character_names: List[
         str

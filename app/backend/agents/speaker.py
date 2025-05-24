@@ -17,6 +17,7 @@ def speaker_agent(state: AppState):
 
     # Web検索エージェント tavilyの使用
     if speak_count == 1:
+        # 最初のジャンルのみを入力情報とする
         first_genre = genres[0] if genres else "映画"
         user_query = f"{first_genre} 映画 オススメ"
 
