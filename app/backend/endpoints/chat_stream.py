@@ -22,6 +22,7 @@ async def chat_stream(request: Request):
     ]  # ←空やスペースも除く
 
     seen_movies = request.query_params.get("seen_movies", "")
+    print(seen_movies)
     characters = request.query_params.get("characters", "")
     selected_names = characters.split(",")
     # 選ばれたキャラクターのプロフィール

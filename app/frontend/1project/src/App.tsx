@@ -23,7 +23,7 @@ const App = () => {
   );
   const [userMessage, setUserMessage] = useState("");
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [seenMovies, setSeenMovies] = useState("");
+  const [seenMovies, setSeenMovies] = useState<string[]>([]);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
@@ -32,7 +32,7 @@ const App = () => {
     useStreamingChat({
       userMessage,
       selectedGenres,
-      seenMovies,
+      seenMovies: seenMovies.join(","),
       selectedCharacters,
       onReceiveMessage: (speaker, text) => {
         setMessages((prev) => [...prev, { sender: speaker, text }]);

@@ -2,6 +2,7 @@ from config import client, model
 from utils.tavily import search_tavily
 from state_types import AppState
 from utils.filmarks import fetch_filmarks_movies, fetch_filmarks_movies_by_genres
+from utils.tmdb_recommender import get_recommendations_from_seen_movies
 
 
 def speaker_agent(state: AppState):
@@ -14,6 +15,7 @@ def speaker_agent(state: AppState):
     last_comment = state.get("last_comment", "")
     genres = state.get("genres", [])
     tool_results = []
+    seen_movies = state.get("seen_movies", "")
 
     # Web検索エージェント tavilyの使用
     if speak_count == 1:
@@ -38,10 +40,16 @@ def speaker_agent(state: AppState):
         tool_results = fetch_filmarks_movies(10, False)
         prompt = client.pull_prompt("maplejava/speaker-trend-coming")
 
+    # 過去作レコメンドエージェント filmarksのスクレイピング　過去作の映画のレコメンド
     elif speak_count == 4:
         # 複数ジャンルを一括で渡して取得
         tool_results = fetch_filmarks_movies_by_genres(genres, 5)
         prompt = client.pull_prompt("maplejava/speaker-trend-genres")
+
+    # 傾向分析エージェント TMDbの利用
+    elif speak_count == 5:
+        tool_results = get_recommendations_from_seen_movies(seen_movies)
+        prompt = client.pull_prompt("maplejava/speaker-user-history")
 
     else:
         prompt = client.pull_prompt("maplejava/speaker-template")
@@ -56,6 +64,7 @@ def speaker_agent(state: AppState):
         "personality": profile["性格"],
         "thema": thema,
         "last_comment": last_comment,
+        "seen_movies": seen_movies,
         "summary_text": "\n".join(
             [f"{item['speaker']}：{item['text']}" for item in summary_items]
         ),
