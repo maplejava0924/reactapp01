@@ -1,6 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
 import time
+from datetime import datetime, timedelta
+import re
+
 
 BASE_URL = "https://filmarks.com"
 
@@ -97,11 +100,6 @@ def fetch_filmarks_movies(limit: int = 10, now: bool = True) -> list[str]:
 
 
 # 指定されたジャンルの過去作も含めた映画情報を取得する。
-
-from datetime import datetime, timedelta
-import re
-
-
 def fetch_filmarks_movies_by_genres(
     genres: list[str], limit_per_genre: int = 5
 ) -> list[str]:
