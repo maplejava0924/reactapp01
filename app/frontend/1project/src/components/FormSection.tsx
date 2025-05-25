@@ -42,6 +42,7 @@ const characters = [
   "神楽",
   "志村新八",
   "星野アイ",
+  "アンパンマン",
 ];
 
 const characterStyles = characterStylesJson as Record<

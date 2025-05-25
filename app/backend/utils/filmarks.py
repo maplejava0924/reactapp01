@@ -12,14 +12,16 @@ HEADERS = {
 }
 
 
-def get_synopsis_from_meta(detail_url: str) -> str:
+def get_detail_from_meta(detail_url: str) -> tuple[str, str, str]:
     try:
         res = requests.get(detail_url, headers=HEADERS)
         soup = BeautifulSoup(res.text, "html.parser")
+
+        # あらすじ
         meta_tag = soup.find("meta", attrs={"name": "description"})
+        description = "あらすじ記載なし"
         if meta_tag and meta_tag.get("content"):
             description = meta_tag["content"].strip()
-            # 特定の定型句を含む場合はその後ろのあらすじ部分を抜き出す
             split_keywords = [
                 "、内容・ネタバレ、あらすじ、予告編・予告動画、公開映画館情報、公開スケジュール、監督・出演者の関連映画情報",
                 "件のレビュー(口コミ・感想・評価)",
@@ -27,10 +29,32 @@ def get_synopsis_from_meta(detail_url: str) -> str:
             for keyword in split_keywords:
                 if keyword in description:
                     description = description.split(keyword)[-1].strip()
-            return description
+
+        # ポスター画像（div.c2-poster-l 内の img の src を取得）
+        poster_container = soup.find("div", class_="c2-poster-l")
+        poster_tag = poster_container.find("img") if poster_container else None
+        poster_url = (
+            poster_tag["src"].strip()
+            if poster_tag and poster_tag.get("src")
+            else "ポスターURLなし"
+        )
+
+        # 予告編動画
+        trailer_section = soup.find(
+            "div", class_="p-content-detail-related-info__box-trailer-video"
+        )
+        iframe_tag = trailer_section.find("iframe") if trailer_section else None
+        trailer_url = (
+            iframe_tag["src"].strip()
+            if iframe_tag and iframe_tag.get("src")
+            else "予告編URLなし"
+        )
+
+        return description, poster_url, trailer_url
+
     except Exception as e:
         print(f"[ERROR] {detail_url} の取得に失敗しました: {e}")
-    return "あらすじ記載なし"
+        return "あらすじ記載なし", "ポスターURLなし", "予告編URLなし"
 
 
 # 最大10本まで上映中の映画の情報を取得する
@@ -49,8 +73,8 @@ def fetch_filmarks_movies(limit: int = 10, now: bool = True) -> list[str]:
         soup = BeautifulSoup(res.content, "html.parser")
         movies = soup.find_all("div", class_="js-cassette")
         results = []
-        for i, movie in enumerate(movies):
-            if i >= limit:
+        for count, movie in enumerate(movies):
+            if count >= limit:
                 break
             title_tag = movie.find("h3", class_="p-content-cassette__title")
             title = title_tag.text.strip() if title_tag else "タイトル記載なし"
@@ -81,18 +105,19 @@ def fetch_filmarks_movies(limit: int = 10, now: bool = True) -> list[str]:
             if readmore_tag and readmore_tag.get("href"):
                 detail_url = BASE_URL + readmore_tag["href"]
                 time.sleep(0.5)  # 負荷軽減のためスリープ
-                synopsis = get_synopsis_from_meta(detail_url)
-            else:
-                synopsis = "あらすじ記載なし"
+                synopsis, poster_url, trailer_url = get_detail_from_meta(detail_url)
 
-            movie_text = (
-                f"【映画{i + 1}】\n"
-                f"タイトル: {title}\n"
-                f"ジャンル: {', '.join(genre_list) if genre_list else 'ジャンル記載なし'}\n"
-                f"公開日: {release_date}\n"
-                f"評価スコア: {score}\n"
-                f"あらすじ: {synopsis}"
-            )
+                movie_text = (
+                    f"【映画{count + 1}】\n"
+                    f"タイトル: {title}\n"
+                    f"ジャンル: {', '.join(genre_list) if genre_list else 'ジャンル記載なし'}\n"
+                    f"公開日: {release_date}\n"
+                    f"評価スコア: {score}\n"
+                    f"あらすじ: {synopsis}\n"
+                    f"ポスター: {poster_url}\n"
+                    f"予告編: {trailer_url}"
+                )
+
             results.append(movie_text)
         return results
     except Exception as e:
@@ -183,9 +208,7 @@ def fetch_filmarks_movies_by_genres(
                 if readmore_tag and readmore_tag.get("href"):
                     detail_url = BASE_URL + readmore_tag["href"]
                     time.sleep(0.5)
-                    synopsis = get_synopsis_from_meta(detail_url)
-                else:
-                    synopsis = "あらすじ記載なし"
+                    synopsis, poster_url, trailer_url = get_detail_from_meta(detail_url)
 
                 movie_text = (
                     f"【映画{count + 1}】\n"
@@ -193,8 +216,11 @@ def fetch_filmarks_movies_by_genres(
                     f"ジャンル: {', '.join(genre_list) if genre_list else 'ジャンル記載なし'}\n"
                     f"公開日: {release_date}\n"
                     f"評価スコア: {score}\n"
-                    f"あらすじ: {synopsis}"
+                    f"あらすじ: {synopsis}\n"
+                    f"ポスター: {poster_url}\n"
+                    f"予告編: {trailer_url}"
                 )
+
                 genre_results.append(movie_text)
                 count += 1
 
@@ -209,4 +235,8 @@ def fetch_filmarks_movies_by_genres(
     return all_results
 
 
-print(fetch_filmarks_movies_by_genres(["アクション", "ホラー"], 5))
+print(fetch_filmarks_movies_by_genres(["SF", "ホラー"], 2))
+print("****************")
+print(fetch_filmarks_movies(2, True))
+print(fetch_filmarks_movies(2, False))
+print("****************")
